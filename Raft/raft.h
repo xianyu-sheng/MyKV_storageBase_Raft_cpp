@@ -40,4 +40,49 @@ private:
     //选举超时
     std::chrono::_V2::system_clock::time_point m_lastRestElectionTime;
     std::chrono::_v2::system_clock::time_point m_lastRestHearBeatTime;//心跳超时
+
+    //用于传入快照点和最后的任期
+    int m_lastSnapshotIncludeIndex;
+    int m_lastSnapshotIncludeTerm;
+    //协程
+    std::unique_ptr<monsoon::IOManageer> m_ioManager = nullptr;
+
+    public:
+        void AppendEntryies1(const raftRpcProtoc::AppendEntryiesArgs* args,raftRpcProtoc::AppendEntryiesReply* reply);//日志同步+心跳
+        void applierTicker();//定期向状态机写入日志
+        bool CondInstallSnapshot(int lastIncludeTerm,int lastIncludeIndex,std::string snapshot);//记录某个时候的状态
+
+        void doElection();//执行选举
+        void doHeartBeat();//发起心跳
+        //每隔一段时间检查睡眠时间有没有重置定时器，没有则超时
+        //如果有则设置合适的睡眠时机，睡眠到重置时机+超时时机
+        void electionTimeoutTicker();//监控是否发起选举
+        std::vector<ApplyMsg> getApplyLogs();//获取应用日志
+        int getnewCommandIndex();//获取新命令的索引
+
+        void getPrevLogInfo(int server,int* preindex,int* preterm);//获取当前日志信息
+        void GetState(int* term,bool* isLeader);//看当前的节点是否是Leader节点
+        void InstallSnapshot1(const raftRpcProtoc::InstallSnapshotRequest* request,raftRpcProtoc::InstallSnapshotResponse* response);//安装快照
+        void leaderHearBeatTicker();//负责查看是否该发送心跳了，如果该发起就执行doHeartBeat()
+        void leaderSendSnapShot(int server);//领导节点发送快照
+        void leaderUpdatecommitIndex(int index);//领导更新提交索引
+        bool matchLog(int logIndex,int LogTerm);//对象Index日志是否匹配，用来判断领导节点的日志与追随者是否匹配，用于选举以及判断心跳日志是否最新你
+        void persist();//持久化当前状态
+
+        void RequestVote1(const raftRpcProtoc::RequestVoteArgs* args,raftRpcProtoc::RequestVoteReply* reply);//变成候选者请求其他节点投票
+        bool UPtodata(int index,int term);//判断当前节点是否有最新日志
+        int getLastLogIndex();//获取最后一个日志条目索引
+        int getLastLogTerm();//获取最后一个日志条目的任期
+
+        void getLastLogIndexAndTerm(int* lastLogIndex,int* lastLogTerm);//获取最后一个日志的索引和任期
+        int GetRaftStateSize();//获取raft状态的大小
+        int getSlicesIndexFromLogIndex(int Logindex);//将日志索引转换为日志条目在m_logs数组中的位置
+        bool sendRequestVote(int server,shared_ptr<raftRpcProtoc::RequestVoteArgs> args,shared_ptr<raftRpcProtoc::RequestVoteReply> reply,shared_ptr<int> voteNum);//请求其他节点为自己投票
+        bool sendAppendEntries(int server,shared_ptr<raftRpcProtoc::AppendEntryiesArgs>args,shared_ptr<raftRpcProtoc::AppendEntryiesReply>reply,shared_ptr<int>appendNum);//发送追加日志条目
+
+        void pushMsgToKVserver(ApplyMsg msg);//向上层KVserver发送消息
+        void readPersist(std::string data);//读取持久化数据
+        std::string persistDate();//持久化数据
+        void Start(Op command,int* newLogindex);//启动
+
 };
