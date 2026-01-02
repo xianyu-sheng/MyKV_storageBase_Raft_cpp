@@ -45,15 +45,16 @@ private:
     int m_lastSnapshotIncludeIndex;
     int m_lastSnapshotIncludeTerm;
     //协程
-    std::unique_ptr<monsoon::IOManageer> m_ioManager = nullptr;
+    std::unique_ptr<monsoon::IOManager> m_ioManager = nullptr;
 
     public:
-        void AppendEntryies1(const raftRpcProtoc::AppendEntryiesArgs* args,raftRpcProtoc::AppendEntryiesReply* reply);//日志同步+心跳
+        void AppendEntries1(const raftRpcProtoc::AppendEntryiesArgs* args,raftRpcProtoc::AppendEntryiesReply* reply);//日志同步+心跳
         void applierTicker();//定期向状态机写入日志
         bool CondInstallSnapshot(int lastIncludeTerm,int lastIncludeIndex,std::string snapshot);//记录某个时候的状态
 
         void doElection();//执行选举
         void doHeartBeat();//发起心跳
+        //监控是否发起选举
         //每隔一段时间检查睡眠时间有没有重置定时器，没有则超时
         //如果有则设置合适的睡眠时机，睡眠到重置时机+超时时机
         void electionTimeoutTicker();//监控是否发起选举
@@ -84,5 +85,6 @@ private:
         void readPersist(std::string data);//读取持久化数据
         std::string persistDate();//持久化数据
         void Start(Op command,int* newLogindex);//启动
-
+        void Raft::init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::shared_ptr<Persister> persist,
+                std::shared_ptr<LockQueue<ApplyMsg>> applyCh);//初始化
 };
