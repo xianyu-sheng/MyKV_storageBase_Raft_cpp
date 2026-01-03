@@ -140,11 +140,12 @@ void Raft::doElection(){
 
 
 //sendRequestVote;
+//作为candidate的处理其他节点回复的视角
 bool Raft::sendReqeustVote(int server,std::shared_ptr<raftRpcProtoc::RequestVoteArgs>args,std::shared_ptr<raftRpcProtoc::RequestVoteReply>reply,std::shared_ptr<int>votedNum){
     auto start=now();
     DPrintf("[func-sendReqeustVote rf{%d}]向server{%d}发送RequestVote 开始",m_me,m_currentTerm,getlastLogIndex());
     bool ok=m_peers[server]->RequestVote1(args.get(),reply.get());//接收其他raft节点返回的结果
-    DPrintf("func-sendRequestVote rf{%d} 向 server {%d} 发送 RequestVote完毕，耗时：{%d} ms",m_me,m_currentTerm,getLastLogIndex(),now-start);
+    DPrintf("func-sendRequestVote rf{%d} 向 server {%d} 发送 RequestVote完毕,耗时:{%d} ms",m_me,m_currentTerm,getLastLogIndex(),now-start);
 
     if(!ok){
         return ok;//Rpc通信失败就理解返回，避免资源浪费
@@ -188,4 +189,60 @@ bool Raft::sendReqeustVote(int server,std::shared_ptr<raftRpcProtoc::RequestVote
         persist();
     }
     return true;
+}
+
+//Request用于响应sendRequestVote,是否投票给他让其成为Leader
+//那么其他节点也是需要检查这个term和最新日志
+void  Raft::RequestVote1(const raftRpcProtoc::RequestVoteArgs* args,raftRpcProtoc::RequestVoteReply* reply){
+    std::lock_guard<std::mutex>lg(m_mtx);
+    DEFERP{
+        persist();//要在锁释放之前更新状态避免在锁释放后才更新，会导致状态被别人更新
+    };
+    //任何情况下都需要先检查任期
+    if(args->term() < m_currentTerm){
+        reply->set_term(m_currentTerm);//在回复给出自己的任期，告诉他目前任期
+        reply->set_votstate(Expire);//设置投票状态过期，告诉候选者你这个不行了
+        reply-?set_votegrandted(false);//投票失败
+        return;
+    }
+    //这里解决的是 如果自己也是候选者 如果遇到比自己大的任期 那么就需要更新自己状态和任期 以及投票状态
+    if(args->term() > m_currentTerm){
+        //转换状态
+        m_status=Follower;
+        m_currentTerm=args->term();
+        m_votedFor=-1;//重置投票
+    }
+    myAssert(args->term()==m_currentTerm,format("func--rf{%d} 前面校验过 args.Term==rf.currentTerm,这里却不等",m_me));
+    //现在节点任期都是相同的（任期小的也已经更新到新的args的term）
+    //然后还需要检查日志是否是匹配的 日志至少需要大于等于自己然后在投票
+    int lastLogTerm=getLastLogIndex();
+    if(!UPtodata(args->lastlogidnex(),args->lastlogterm())){
+        //Uptodata函数用于比较请求者的日志是否比当前节点的日志更新，只有当请求者的日志至少与当前节点一样，才会考虑投票
+        if(args->lastlogterm()<lastLogTerm){
+            //处理日志，可以输出不匹配 不投票
+        }else{
+            //同理
+        }
+        //日志的最后一个任期或者index和请求参数的不匹配无法投票
+        reply->set_term(m_currentTerm);
+        reply->set_votstate(Voted);
+        reply->set_votegrandted(false);
+        return;
+    }
+    //处理因为网络不好导致响应丢失重发的情况
+    //这里的情况是该节点已经投过票了并且不是投给当前候选者，因网络不好导致响应丢失而进行的重发消息
+    if(m_votedFor!=-1 && m_votedFor!=args->candidate_id()){
+        reply->set_term(m_currentTerm);
+        reply->set_votstate(Voted);
+        reply->set_votegrandted(false);
+        return;
+    }else{
+        //否则投给该请求投票的节点
+        m_votedFor=args->candidate_id();
+        m_lastResetEelectionTime=now();//在投出票之后重置定时器
+        reply->set_term(m_currentTerm);
+        reply->set_votstate(Normal);
+        reply->set_votegrandted(true);
+        return;
+    }
 }
