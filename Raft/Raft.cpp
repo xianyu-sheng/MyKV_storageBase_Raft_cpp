@@ -192,57 +192,109 @@ bool Raft::sendReqeustVote(int server,std::shared_ptr<raftRpcProtoc::RequestVote
 }
 
 //Request用于响应sendRequestVote,是否投票给他让其成为Leader
-//那么其他节点也是需要检查这个term和最新日志
-void  Raft::RequestVote1(const raftRpcProtoc::RequestVoteArgs* args,raftRpcProtoc::RequestVoteReply* reply){
-    std::lock_guard<std::mutex>lg(m_mtx);
-    DEFERP{
-        persist();//要在锁释放之前更新状态避免在锁释放后才更新，会导致状态被别人更新
-    };
-    //任何情况下都需要先检查任期
-    if(args->term() < m_currentTerm){
-        reply->set_term(m_currentTerm);//在回复给出自己的任期，告诉他目前任期
-        reply->set_votstate(Expire);//设置投票状态过期，告诉候选者你这个不行了
-        reply-?set_votegrandted(false);//投票失败
+// 处理其他节点的投票请求（被请求方视角）
+void Raft::RequestVote1(const raftRpcProtoc::RequestVoteArgs* args, raftRpcProtoc::RequestVoteReply* reply) {
+    std::lock_guard<std::mutex> lg(m_mtx); // 保证状态修改线程安全
+    // DEFERP宏：函数退出前执行persist（需确保DEFERP是“延迟执行”宏，如未定义可替换为析构类）
+    struct DeferPersist {
+        Raft* raft;
+        DeferPersist(Raft* r) : raft(r) {}
+        ~DeferPersist() { raft->persist(); } // 析构时执行persist，替代DEFERP
+    } defer_persist(this);
+
+    // ===== 规则1：任期校验（Raft核心，任期小的请求直接拒绝）=====
+    if (args->term() < m_currentTerm) {
+        reply->set_term(m_currentTerm);       // 返回自身任期，告知候选者其任期过期
+        reply->set_votstate(Expire);          // 投票状态：请求过期
+        reply->set_votegranted(false);        // 拒绝投票（修正拼写错误：votegrandted→votegranted）
+        DPrintf("[RequestVote1] rf{%d} 拒绝投票：候选者term{%d} < 自身term{%d}", m_me, args->term(), m_currentTerm);
         return;
     }
-    //这里解决的是 如果自己也是候选者 如果遇到比自己大的任期 那么就需要更新自己状态和任期 以及投票状态
-    if(args->term() > m_currentTerm){
-        //转换状态
-        m_status=Follower;
-        m_currentTerm=args->term();
-        m_votedFor=-1;//重置投票
+
+    // ===== 规则2：请求任期更大 → 降级为Follower并重置状态 =====
+    if (args->term() > m_currentTerm) {
+        m_status = Follower;                  // 无论当前是Candidate/Leader，都降级为Follower
+        m_currentTerm = args->term();         // 更新自身任期到最新
+        m_votedFor = -1;                      // 重置投票状态（当前任期未投票）
+        DPrintf("[RequestVote1] rf{%d} 发现更高term{%d}，降级为Follower并重置投票", m_me, args->term());
     }
-    myAssert(args->term()==m_currentTerm,format("func--rf{%d} 前面校验过 args.Term==rf.currentTerm,这里却不等",m_me));
-    //现在节点任期都是相同的（任期小的也已经更新到新的args的term）
-    //然后还需要检查日志是否是匹配的 日志至少需要大于等于自己然后在投票
-    int lastLogTerm=getLastLogIndex();
-    if(!UPtodata(args->lastlogidnex(),args->lastlogterm())){
-        //Uptodata函数用于比较请求者的日志是否比当前节点的日志更新，只有当请求者的日志至少与当前节点一样，才会考虑投票
-        if(args->lastlogterm()<lastLogTerm){
-            //处理日志，可以输出不匹配 不投票
-        }else{
-            //同理
+
+    // 断言：经过上面两步，请求term必然等于自身term（防御性编程）
+    myAssert(args->term() == m_currentTerm, 
+             format("func--rf{%d} 任期校验失败：args.Term{%d} != rf.currentTerm{%d}", m_me, args->term(), m_currentTerm));
+
+    // ===== 规则3：日志完整性校验（仅给日志≥自身的候选者投票）=====
+    int selfLastLogIndex = getLastLogIndex();  // 自身最后一条日志的索引（修正：用户之前错写为getLastLogIndex赋值给lastLogTerm）
+    int selfLastLogTerm = getLastLogTerm();    // 自身最后一条日志的任期
+    bool candidateLogUpToDate = UPtodata(args->lastlogindex(), args->lastlogterm()); // 候选者日志是否最新
+
+    if (!candidateLogUpToDate) {
+        // 填充缺失逻辑：日志不满足 → 拒绝投票，输出调试日志
+        DPrintf("[RequestVote1] rf{%d} 拒绝投票：候选者日志更旧 | 候选者(lastIdx:%d, lastTerm:%d) 自身(lastIdx:%d, lastTerm:%d)",
+                m_me, args->lastlogindex(), args->lastlogterm(), selfLastLogIndex, selfLastLogTerm);
+        reply->set_term(m_currentTerm);
+        reply->set_votstate(Vted);             // 投票状态：本轮已投票（或直接Expire，核心是拒绝）
+        reply->set_votegranted(false);
+        return;
+    }
+
+    // ===== 规则4：同一任期内最多投一票 =====
+    if (m_votedFor != -1 && m_votedFor != args->candidate_id()) {
+        // 已投给其他候选者（可能是网络重发请求）→ 拒绝
+        DPrintf("[RequestVote1] rf{%d} 拒绝投票：本轮已投给节点{%d}，候选者{%d}请求投票", m_me, m_votedFor, args->candidate_id());
+        reply->set_term(m_currentTerm);
+        reply->set_votstate(Vted);
+        reply->set_votegranted(false);
+        return;
+    }
+
+    // ===== 满足所有条件 → 投给该候选者 =====
+    m_votedFor = args->candidate_id();        // 记录本轮投票对象
+    m_lastResetElectionTime = now();          // 重置选举定时器（避免自己超时发起选举，修正拼写错误：m_lastResetEelectionTime）
+    reply->set_term(m_currentTerm);
+    reply->set_votstate(Normal);              // 投票状态：正常投票
+    reply->set_votegranted(true);             // 同意投票
+    DPrintf("[RequestVote1] rf{%d} 同意投票给候选者{%d}，term{%d}", m_me, args->candidate_id(), m_currentTerm);
+    return;
+}
+
+//日志复制与心跳机制
+//负责查看是否该发送该心跳，如果该发起就执行doHearBeat  ---- 其实就是检验是不是到时间了
+void Raft::leaderHearBeatTicker(){
+    while(true){
+        while(m_status!=Leader){
+            //避免不是Leader CPU空转  浪费资源 而且还要拿锁 让他们继续睡
+            usleep(1000*HeartBeatTimeout);
         }
-        //日志的最后一个任期或者index和请求参数的不匹配无法投票
-        reply->set_term(m_currentTerm);
-        reply->set_votstate(Voted);
-        reply->set_votegrandted(false);
-        return;
-    }
-    //处理因为网络不好导致响应丢失重发的情况
-    //这里的情况是该节点已经投过票了并且不是投给当前候选者，因网络不好导致响应丢失而进行的重发消息
-    if(m_votedFor!=-1 && m_votedFor!=args->candidate_id()){
-        reply->set_term(m_currentTerm);
-        reply->set_votstate(Voted);
-        reply->set_votegrandted(false);
-        return;
-    }else{
-        //否则投给该请求投票的节点
-        m_votedFor=args->candidate_id();
-        m_lastResetEelectionTime=now();//在投出票之后重置定时器
-        reply->set_term(m_currentTerm);
-        reply->set_votstate(Normal);
-        reply->set_votegrandted(true);
-        return;
+        static std::atomic<int32_t>atomicCount=0;
+        //表示当前线程需要睡眠的时间，计算方式基于心跳超时时间和上一次心跳重置时间m_lastresethearBeatTimeout
+        //目的，用于动态太癌症睡眠时间，避免线程频繁检查状态导致CPU空转
+        std::chrono::duration<signed long int,std::ratio<1,1000000000>>suitableSleepTime{};
+        std::chrono::system_clock::time_point weakTime{};
+        {
+            std::lock_guard<std::mutex>lg(m_mtx);
+            weakTime=now();
+            suitableSleepTime=std::chrono::milliseconds(HeartBeatTimeout)+m_lastResetElectionTime-weakTime;
+        }
+        if(std::chrono::duration<double,std::milli>(suitableSleepTime).count()>1){
+            //说明此时还没到发心跳的时间 继续睡眠
+            std::cout<<atomicCount <<"\033[1;35m leaderHearBeatTicker();函数设置睡眠时间为]"
+                                    <<std::chrono::duration_cast<std::chrono::milliseconds(suitableSleepTime).count()<<"毫秒\033[0m"
+                                    <<std::endl;
+            //获取当前时间点
+            auto start=std::chrono::steady_clock::now();
+            usleep(std::chrono::duration_cast<std::chrono::milliseconds>(suitableSleepTime).count());
+            auto end=std::chrono::steady_clock::now();
+            //计算时间差值单位是毫秒
+            std::chrono::duration<double,std::milli>duration=end-start;
+            //使用ANSI控制序列将输出颜色改为紫色
+            std::cout<<atomicCount<<"\033[1;35m leaderHearBeatTicker();函数实际睡眠时间为："<<duration.count()
+                                  <<"毫秒\033[0m"<<std::endl;
+            ++atomicCount;//打印睡眠时间
+        }
+        if(std::chrono::duration<double,std::milli>(m_lastResetHearBeatTime-weakTime).count()>0){
+            continue;//睡眠这段时间有重置心跳计时器，不触发心跳
+        }
+        doHeartBeat();//执行实际的心跳发送操作
     }
 }

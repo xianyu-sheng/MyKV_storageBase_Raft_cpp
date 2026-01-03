@@ -6,7 +6,7 @@ constexpr int AppNormal = 1;
 
 ////投票状态
 constexpr int Killed=0;
-constexpr int Voted=1;//本轮已经投过票了
+constexpr int Vted=1;//本轮已经投过票了
 constexpr int Expire=2;//投票（消息、竞选者）过期
 constexpr int Normal=3;
 
