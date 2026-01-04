@@ -298,3 +298,126 @@ void Raft::leaderHearBeatTicker(){
         doHeartBeat();//执行实际的心跳发送操作
     }
 }
+
+void Raft::doHeartBeat() {
+    std::lock_guard<std::mutex> g(m_mtx);
+    if (m_status != Leader) {
+        return; // 非Leader状态直接返回，避免无效操作
+    }
+
+    DPrintf("[func-Raft::doHeartBeat()-Leader:{%d}] 触发心跳，开始向所有追随者发送消息\n", m_me);
+    auto successCount = std::make_shared<int>(1); // 统计成功响应的追随者数量（初始包含自身）
+
+    // 遍历所有追随者，分别处理快照发送或日志发送
+    for (int peerId = 0; peerId < m_peers.size(); ++peerId) {
+        if (peerId == m_me) {
+            continue; // 跳过自身
+        }
+
+        DPrintf("[func-Raft::doHeartBeat()-Leader:{%d}] 处理追随者[%d]的心跳/日志同步\n", m_me, peerId);
+        myAssert(m_nextIndex[peerId] >= 1, format("追随者[%d]的nextIndex异常: %d", peerId, m_nextIndex[peerId]));
+
+        // 根据nextIndex判断需要发送快照还是日志条目
+        if (m_nextIndex[peerId] < m_lastSnapshotIncludeIndex) {
+            // 发送快照到追随者
+            startSnapshotSendThread(peerId, successCount);
+        } else {
+            // 发送日志条目到追随者
+            startLogEntriesSendThread(peerId, successCount);
+        }
+    }
+
+    // 重置Leader自身的心跳计时器
+    m_lastResetHearBeatTime = now();
+    DPrintf("[func-Raft::doHeartBeat()-Leader:{%d}] 完成所有追随者消息发送，重置心跳时间\n", m_me);
+}
+
+// 辅助函数：创建线程向指定追随者发送快照
+void Raft::startSnapshotSendThread(int peerId, std::shared_ptr<int> successCount) {
+    // 捕获当前锁保护下的快照相关参数（避免线程执行时数据被修改）
+    int snapshotIndex = m_lastSnapshotIncludeIndex;
+    int snapshotTerm = m_lastSnapshotIncludeTerm;
+    std::string snapshotData = m_persister->ReadSnapshot(); // 假设从持久化组件获取快照数据
+
+    // 创建线程发送快照，分离线程避免阻塞
+    std::thread([this, peerId, snapshotIndex, snapshotTerm, snapshotData, successCount]() {
+        leaderSendSnapShot(peerId, snapshotIndex, snapshotTerm, snapshotData, successCount);
+    }).detach();
+}
+
+// 辅助函数：创建线程向指定追随者发送日志条目（AppendEntries）
+void Raft::startLogEntriesSendThread(int peerId, std::shared_ptr<int> successCount) {
+    // 1. 计算前置日志信息（prevLogIndex和prevLogTerm）
+    int preLogIndex = -1;
+    int preLogTerm = -1;
+    getPrevLogInfo(peerId, &preLogIndex, &preLogTerm);
+
+    // 2. 构造AppendEntries请求参数
+    auto args = std::make_shared<raftRpcProtoc::AppendEntriesArgs>();
+    args->set_term(m_currentTerm);
+    args->set_leaderid(m_me);
+    args->set_prevlogindex(preLogIndex);
+    args->set_prevlogterm(preLogTerm);
+    args->set_leadercommit(m_commitIndex);
+    args->clear_entries(); // 清空残留条目
+
+    // 3. 填充需要发送的日志条目
+    if (preLogIndex != m_lastSnapshotIncludeIndex) {
+        // 从preLogIndex的下一条开始发送（非快照后的第一条）
+        int startSliceIdx = getslicesIndexFromLogIndex(preLogIndex) + 1;
+        for (int j = startSliceIdx; j < m_logs.size(); ++j) {
+            *args->add_entries() = m_logs[j];
+        }
+    } else {
+        // 从快照后的第一条日志开始发送
+        for (const auto& log : m_logs) {
+            *args->add_entries() = log;
+        }
+    }
+
+    // 4. 验证日志条目连续性（保持原逻辑的断言检查）
+    int lastLogIndex = getLastLogIndex();
+    myAssert(preLogIndex + args->entries_size() == lastLogIndex,
+             format("日志条目长度不匹配：prev[%d] + entries[%d] != last[%d]",
+                    preLogIndex, args->entries_size(), lastLogIndex));
+
+    // 5. 创建线程发送日志，分离线程
+    auto reply = std::make_shared<raftRpcProtoc::AppendEntriesReply>();
+    reply->set_appstate(Disconnected); // 初始化为未连接状态
+    std::thread([this, peerId, args, reply, successCount]() {
+        sendAppendEntries(peerId, args, reply, successCount);
+    }).detach();
+}
+
+// 优化后的快照发送实现（补充参数传递）
+void Raft::leaderSendSnapShot(int peerId, int snapshotIndex, int snapshotTerm, 
+                             const std::string& snapshotData, std::shared_ptr<int> successCount) {
+    // 构造快照请求（使用捕获的参数，避免依赖锁）
+    raftRpcProtoc::InstallSnapshotRequest req;
+    req.set_leaderid(m_me);
+    req.set_term(m_currentTerm);
+    req.set_lastsnapshotincludeindex(snapshotIndex);
+    req.set_lastsnapshotincludeterm(snapshotTerm);
+    req.set_snapshotdata(snapshotData);
+
+    raftRpcProtoc::InstallSnapshotResponse resp;
+    bool success = m_peers[peerId]->InstallSnapshot(&req, &resp);
+
+    // 处理响应（更新nextIndex等逻辑，原逻辑保持不变）
+    if (success) {
+        std::lock_guard<std::mutex> g(m_mtx);
+        if (resp.term() > m_currentTerm) {
+            // 发现更高term，降级为Follower
+            m_status = Follower;
+            m_currentTerm = resp.term();
+            m_votedFor = -1;
+            persist();
+            return;
+        }
+        // 快照发送成功，更新该追随者的nextIndex
+        m_nextIndex[peerId] = snapshotIndex + 1;
+        m_matchIndex[peerId] = snapshotIndex;
+        *successCount += 1;
+        leaderUpdateCommitIndex(); // 尝试更新提交索引
+    }
+}
