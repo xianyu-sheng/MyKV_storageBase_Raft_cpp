@@ -87,4 +87,15 @@ private:
         void Start(Op command,int* newLogindex);//启动
         void Raft::init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::shared_ptr<Persister> persist,
                 std::shared_ptr<LockQueue<ApplyMsg>> applyCh);//初始化
+        bool callAppendEntriesRpc(int peerId, 
+                             std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
+                             std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply);
+        bool handleTermMismatch(int replyTerm);
+        bool isStillLeader();
+        void handleLogMismatch(int peerId, std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply);
+        void updatePeerSyncState(int peerId, 
+                                std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
+                                std::shared_ptr<int> appendNums);
+        void tryUpdateCommitIndex(std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
+                                std::shared_ptr<int> appendNums);
 };

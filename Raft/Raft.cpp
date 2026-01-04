@@ -421,3 +421,122 @@ void Raft::leaderSendSnapShot(int peerId, int snapshotIndex, int snapshotTerm,
         leaderUpdateCommitIndex(); // 尝试更新提交索引
     }
 }
+
+//sendAppendEntries
+//原卡哥的实现 我感觉逻辑不是很清晰 没有很好的体现Raft共识算法的心跳-发送日志-匹配日志-状态变更的算法思想
+/*
+bool Raft::sendAppendEntries(int peerId, std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
+                            std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply,
+                            std::shared_ptr<int> appendNums) {
+    DPrintf("func-Raft::sendAppendEntries()-Leader:{%d} Leader 向节点{%d}发送AE RPC开始，args->entries_size():{%d}",m_me,peerId,args->entries_size());
+
+    //调用RPC开始
+    bool ok=m_peers[peerId]->AppendEntries(args.get(),reply.get());
+    if(!ok){
+        //RPC调用失败（例如网络问题）
+        DPrintf("[func-Raft::sendAppendEntries()-raft{%d} leader 向节点 {%d}发送  AE RPC失败]",m_me,peerId);
+        return ok;
+    }
+    if(reply->appstate()==Disconnected){
+        //RPC调用成功 但追随者因网络分区或其他原因未能处理请求  也就是超时了 或者是其他的状态值返回了
+        return ok;
+    }
+
+    //检查返回的Term以维持日志的一致性
+    if(reply->term()>m_currentTerm){
+        //退回Follower状态
+        m_status=Follower;
+        m_currentTerm=reply->term();
+        m_votedFor=-1;
+        persist();
+        return ok;
+    }else if(reply->term()<m_currentTerm){
+        //说明对方过时了 那么就需要在返回值中写入目前最新的term以及日志等等 或者是调用一个日志同步的接口 去跟当前的server对接 看看其到底丢失多少日志
+        //然后给他
+        //这里直接忽略----卡哥这里
+        DPrintf("[func-sendAppendEntries rf{%d} 节点{%d}的term{%d} < rf {%d}的term{%d}\n]",m_me,peerId,reply->term(),m_me,m_currentTerm);
+        return ok;
+    }
+    if(m_status!=Leader){
+        //如果当前的节点不在是Leader了 则无需进行进一步的回应
+        return ok;
+    }
+    myAssert(reply->term()==m_currentTerm,format("reply.Term{%d}!=rf.currentTerm{%d}",reply->term(),m_currentTerm));
+    if(!reply->success()){
+        //日志不匹配，调整nextindex继续尝试
+            if(reply->updatenextindex()!=-100){
+                //-100是特殊的标记，用于优化Leader的回退逻辑
+                DPrintf("[func-sendAppendEntries rf{%d} 返回的日志term相等 但不匹配  回退nextindex[%d]:{%d}\n]",m_me,server,reply->updatenextindex());
+                m_nextIndex[server]=reply->updatenextindex();//使用追随者发回来的nextindex  减少不必要的重试
+            }
+        }else{
+            //日志匹配，更新appendnums 和相关索引
+            *appendNums=*appendNums+1;//表示有一个追随者接受了日志或者是心跳
+            DPrintf("----------temp ------------{%d}",*appendNums);
+            //更新matchindex 和 nextindex
+            m_matchIndex[server]=std::max(m_matchIndex[server],args->prevlogindex()+args->entries_size());
+            m_nextIndex[server]=m_matchIndex[server]+1;
+
+            int lastLogIndex=getlastLogIndex();
+            myAssert(m_matchIndex[server]<=lastLogIndex+1,format("m_matchIndex[%d]>lastLogIndex[%d]",m_matchIndex[server],lastLogIndex));
+            //检查日志是否可提交 即是否得到了多数票
+            if(*appendNums>=m_peers.size()/2+1){
+                *appendNums=0;//避免重复提交【多线程】
+                if(args->entries_size()>0){
+                    DPrintf("args->entries_size():{%d}",args->entries_size());
+                }
+
+                //只有当前term的日志被大多数追随者接受了 才能提交
+                if(args->entries_size()>0 && args->entries(args->entries_size()-1).logterm()==m_currentTerm){
+                    DPrintf("-------------日志提交成功");
+                    m_commitIndex=std::max(m_commitIndex,args->prevlogindex()+args->entries_size());
+                }
+                myAssert(m_commitIndex<=lastLogIndex,format("m_commitIndex[%d]>lastLogIndex[%d]",m_commitIndex,lastLogIndex));
+            }
+            
+        }
+        return ok;
+    }
+
+*/
+
+//下面是我抽象出来的逻辑 保证每一个函数处理一个问题  逻辑清晰
+// ===================== 主函数：仅做流程调度，无嵌套逻辑 =====================
+bool Raft::sendAppendEntries(int peerId, 
+                            std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
+                            std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply,
+                            std::shared_ptr<int> appendNums) {
+    // 子函数1：执行RPC调用 + 网络状态检查
+    if (!callAppendEntriesRpc(peerId, args, reply)) {
+        return false;
+    }
+
+    // 子函数2：处理任期不匹配（降级/忽略），返回true表示需终止后续逻辑
+    std::lock_guard<std::mutex> lg(m_mtx); // 加锁保护共享状态（原逻辑隐含锁，需显式加）
+    if (handleTermMismatch(reply->term())) {
+        return true;
+    }
+
+    // 子函数3：检查Leader角色合法性
+    if (!isStillLeader()) {
+        return true;
+    }
+
+    // 断言：任期必须一致（原逻辑的防御性检查）
+    myAssert(reply->term() == m_currentTerm, 
+             format("reply.Term{%d}!=rf.currentTerm{%d}", reply->term(), m_currentTerm));
+
+    // 子函数4：处理日志不匹配（success=false）
+    if (!reply->success()) {
+        handleLogMismatch(peerId, reply);
+        return true;
+    }
+
+    // 子函数5：处理日志匹配（success=true），更新同步状态+计数
+    updatePeerSyncState(peerId, args, appendNums);
+
+    // 子函数6：检查多数派条件，尝试更新commitIndex
+    tryUpdateCommitIndex(args, appendNums);
+
+    return true;
+}
