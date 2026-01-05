@@ -540,3 +540,108 @@ bool Raft::sendAppendEntries(int peerId,
 
     return true;
 }
+
+// ===================== 子函数1：封装RPC调用 + 网络状态检查 =====================
+bool Raft::callAppendEntriesRpc(int peerId, 
+                               std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
+                               std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply) {
+    DPrintf("func-Raft::sendAppendEntries()-Leader:{%d} Leader 向节点{%d}发送AE RPC开始，args->entries_size():{%d}",
+            m_me, peerId, args->entries_size());
+
+    // 执行RPC调用
+    bool ok = m_peers[peerId]->AppendEntries(args.get(), reply.get());
+    if (!ok) {
+        DPrintf("[func-Raft::sendAppendEntries()-raft{%d} leader 向节点 {%d}发送 AE RPC失败]", m_me, peerId);
+        return false;
+    }
+
+    // 检查网络状态（Disconnected则终止）
+    if (reply->appstate() == Disconnected) {
+        return false;
+    }
+
+    return true;
+}
+
+// ===================== 子函数2：处理任期不匹配（Raft核心：任期优先） =====================
+bool Raft::handleTermMismatch(int replyTerm) {
+    // 情况1：对方term更大 → 降级为Follower
+    if (replyTerm > m_currentTerm) {
+        m_status = Follower;
+        m_currentTerm = replyTerm;
+        m_votedFor = -1;
+        persist();
+        return true; // 终止后续逻辑
+    }
+
+    // 情况2：对方term更小 → 忽略，终止后续逻辑
+    if (replyTerm < m_currentTerm) {
+        DPrintf("[func-sendAppendEntries rf{%d} 节点{%d}的term{%d} < rf {%d}的term{%d}\n]",
+                m_me, peerId, replyTerm, m_me, m_currentTerm);
+        return true; // 终止后续逻辑
+    }
+
+    // 情况3：任期一致 → 继续后续逻辑
+    return false;
+}
+
+// ===================== 子函数3：检查Leader角色合法性 =====================
+bool Raft::isStillLeader() {
+    if (m_status != Leader) {
+        return false; // 非Leader，终止后续逻辑
+    }
+    return true;
+}
+
+// ===================== 子函数4：处理日志不匹配（回退nextIndex） =====================
+void Raft::handleLogMismatch(int peerId, std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply) {
+    // -100是卡哥定义的特殊标记，跳过无效回退
+    if (reply->updatenextindex() != -100) {
+        DPrintf("[func-sendAppendEntries rf{%d} 返回的日志term相等 但不匹配  回退nextindex[%d]:{%d}\n]",
+                m_me, peerId, reply->updatenextindex());
+        m_nextIndex[peerId] = reply->updatenextindex(); // 用追随者返回的nextIndex优化重试
+    }
+}
+
+// ===================== 子函数5：更新节点同步状态（日志匹配成功） =====================
+void Raft::updatePeerSyncState(int peerId, 
+                              std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
+                              std::shared_ptr<int> appendNums) {
+    // 1. 增加成功同步的追随者计数
+    *appendNums = *appendNums + 1;
+    DPrintf("----------temp ------------{%d}", *appendNums);
+
+    // 2. 更新matchIndex和nextIndex（原逻辑的max保护）
+    int newMatchIndex = args->prevlogindex() + args->entries_size();
+    m_matchIndex[peerId] = std::max(m_matchIndex[peerId], newMatchIndex);
+    m_nextIndex[peerId] = m_matchIndex[peerId] + 1;
+
+    // 3. 防御性断言（原逻辑保留）
+    int lastLogIndex = getLastLogIndex();
+    myAssert(m_matchIndex[peerId] <= lastLogIndex + 1,
+             format("m_matchIndex[%d]>lastLogIndex[%d]", m_matchIndex[peerId], lastLogIndex));
+}
+
+// ===================== 子函数6：检查多数派条件，尝试更新commitIndex（Raft核心） =====================
+void Raft::tryUpdateCommitIndex(std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
+                               std::shared_ptr<int> appendNums) {
+    // 1. 检查是否达到多数派（原逻辑：m_peers.size()/2 +1）
+    if (*appendNums < m_peers.size() / 2 + 1) {
+        return; // 未达多数，无需更新
+    }
+
+    // 2. 重置计数，避免多线程重复提交（原逻辑）
+    *appendNums = 0;
+
+    // 3. 仅提交「当前任期」的日志（Raft安全性规则）
+    if (args->entries_size() > 0 && args->entries(args->entries_size() - 1).logterm() == m_currentTerm) {
+        DPrintf("-------------日志提交成功");
+        int newCommitIndex = args->prevlogindex() + args->entries_size();
+        m_commitIndex = std::max(m_commitIndex, newCommitIndex);
+    }
+
+    // 4. 防御性断言（原逻辑保留）
+    int lastLogIndex = getLastLogIndex();
+    myAssert(m_commitIndex <= lastLogIndex,
+             format("m_commitIndex[%d]>lastLogIndex[%d]", m_commitIndex, lastLogIndex));
+}
