@@ -645,3 +645,77 @@ void Raft::tryUpdateCommitIndex(std::shared_ptr<raftRpcProtoc::AppendEntriesArgs
     myAssert(m_commitIndex <= lastLogIndex,
              format("m_commitIndex[%d]>lastLogIndex[%d]", m_commitIndex, lastLogIndex));
 }
+
+//AppendEntreis函数
+void Raft::AppendEntries1(const raftRpcProtoc::AppendEntreisArgs* args,raftRpcProtoc::AppendEntriesReply* reply){
+    //先加锁
+    std::lock_guard<std::mutex> locker(m_mtx);
+    reply->set_appstate(AppNormal);//能接收到网络是正常的
+    //不同raft节点收到AppendEntreis1反应是不同的 要注意无论是什么时候收到rpc请求和响应都需要下检查任期term
+    if(args->term() < m_currentTerm){
+        reply->set_success(false);
+        reply->set_term(m_currentTerm);
+        reply->set_updatenextindex(-100);//论文中，让领导人 及时更新自己
+        DPrintf("AppendEntries1: received stale term %d, current term %d", args->term(), m_currentTerm);
+        return;
+    }
+
+    //确保持久化persist()会在作用域结束时 自动吊用  即使在这个作用域中发生了异常或者是什么
+    DEFER{persist();};
+
+    if(args->term()>m_currentTerm){
+        //那么就需要更新状态  更新term
+        m_status=Follower;
+        m_currentTerm=args->term();
+        m_votedFor=-1;//这里设置成-1有意义，如果突然宕机然后上线依旧可以继续投票
+
+        //这里可以不返回  应该改成让该节点尝试接受日志
+        //如果是领导人和candidate突然转到Follower暂时也不需要其他操作
+        //如果本来就是Follower 那么其Term变化 相当于“不言自明”的切换了追随的对象，因为原来的Leader的Term比这个新的旧
+    }
+    //防御性编程 再检查一下
+    myAssert(m_currentTerm==args->term(),format("assert { args.Term()==rf.current_term} fail"));
+    //如果发生了网络分区，那么candidate可能会收到同一个Term的Leader的消息，此时要转变成Follower
+    m_status=Follower;
+    m_lastResetElectionTime=now();//这里重置超时定时器，是为了告诉当前分区已经有了Leader 避免重复选举
+    //不能无脑的从 PrevlogIndex开始截断日志，因为RPC消息可能延迟，导致发送过来的Log可能是很久之前的
+
+    //此时就开始比较日志 有三种情况
+    if(args->prevlogindex()>getLastLogIndex()){
+        //情况1：prevlogindex超出了目前的日志范围 拒绝掉
+        reply->set_success(false);
+        reply->set_term(m_currentTerm);//将自己的term反回去以及期望获得下一个日志索引
+        reply->set_updatenextindex(getLastLogIndex()+1);//updateindex这里就是告诉领导人 希望你下次给我发送日志从哪里开始发 避免多次重试浪费时间
+        return;
+    }else if(args->preLogIndex()<m_lastSnapshotIncludeIndex){
+        //Leader的索引却小于本地快照包含的最后一个日志索引，表示Leader的日志过于陈旧
+        reply->set_success(false);
+        reply->set_term(m_currentTerm);
+        reply->set_updatenextindex(m_lastSnapshotIncludeIndex + 1);
+    }
+
+    //然后现在才是匹配的情况
+    if(matchLog(args->prevlogindex(),args->preLogTerm())){
+        //这里判断的情况就是Leader发送的Index大于本地raft快照的lastindex并且小于本地raft日志日志的范围，不能进行无脑的截断，直接截断可能重复拿取已经存在的日志给Follower
+        //需要一个个进行匹配，也就是向前纠错 查看具体到那个任期中那个日志出现了问题
+        //开始遍历日志
+        for(int i=0;i<args->entries_size();i++){
+            auto log=args->entries[i];
+            if(log.logindex() > getLastLogIndex()){
+                //超过就添加日志
+                m_logs.push_back(log);
+            }else{
+                //没超过说明Leader发送的该日志条目小于当前的raft日志最后记录的Index
+                //没超过就比较是否匹配，不匹配在更新而不是直接截断
+                //这里上面有一个细节就是首先判断了Leader发送过来认为raft已经接收到的是prelogindex和任期的值是否与当前raft节点一致，是就继续
+                //else 就在下面进行优化RPC请求次数的处理
+                //这里判断的就是Leader新发送的数据的Index下雨等于日志记录最后的Index，不是直接截断而是看Leader发送的任期和命令是否和当前raft记录的任期和命令一直
+                //不一致就更新
+                if(m_logs[getslicesIndexFromLogIndex(log.index())],logterm()==log.logindex()&&
+                    m_logs[getslicesIndexFromLogIndex(log.logindex())].command()!=log.command()){
+                        //相同位置的log，其logterm相等，但是命令却不相等，不符合的raft向前匹配，异常了
+                    }
+            }
+        }
+    }
+}
