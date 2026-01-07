@@ -647,6 +647,8 @@ void Raft::tryUpdateCommitIndex(std::shared_ptr<raftRpcProtoc::AppendEntriesArgs
 }
 
 //AppendEntreis函数
+
+//函数理解链接  ：： https://www.doubao.com/thread/w4d7fb3d8d0c6b440
 void Raft::AppendEntries1(const raftRpcProtoc::AppendEntreisArgs* args,raftRpcProtoc::AppendEntriesReply* reply){
     //先加锁
     std::lock_guard<std::mutex> locker(m_mtx);
@@ -714,8 +716,39 @@ void Raft::AppendEntries1(const raftRpcProtoc::AppendEntreisArgs* args,raftRpcPr
                 if(m_logs[getslicesIndexFromLogIndex(log.index())],logterm()==log.logindex()&&
                     m_logs[getslicesIndexFromLogIndex(log.logindex())].command()!=log.command()){
                         //相同位置的log，其logterm相等，但是命令却不相等，不符合的raft向前匹配，异常了
+                        myAssert(false,format("func-AppendEntries-rf{%d} 两节点logindex{%d}和term{%d}相同，但是其command{%d:%d}不同",m_id,log.logindex(),log.logterm(),m_logs[getslicesIndexFromLogIndex(log.logindex())].command(),log.command()))
                     }
+                if(m_logs[getslicesIndexFromLogIndex(log.logindex())].term()!=log.logterm()){
+                    //不匹配就不跟新
+                    m_logs[getslicesIndexFromLogIndex(log.logindex())]=log;
+                }
             }
         }
+        //这种情况出现就是当前任期没有提交但是领导之前的日志保存了已经提交的信息，所以追随者不能直接无脑上getLastindex
+        if(args->leadercommit()>m_commitIndex){
+            m_commitIndex=min(args->leadercommit(),getLastLogIndex());
+        }
+        //领导会依次发送完所有的日志
+        myAssert(getLastLogIndex()>=m_commitIndex,
+        format("[func-AppendEntries1-rf{%d}] rf.getlastindex{%d} < rf.commitindex{%d}"),m_me,getLastLogIndex(),m_commitIndex);
+        reply->set_success(true);
+        reply->set_term(m_currentTerm);
+        return;
+    }else{
+        //此时的情况就是Leader认为我们应该同步的的index和任期在我们的追随者日志中不一致
+        //所以就需要发送期望领导发送日志的Index值，这个应该由接收者去设置期望的Index
+        //并且优化RPC请求的次数
+        //注意：如果没有出现任期不匹配的情况可能是其他矛盾就不会利用到for循环的优化而是一步步的向前匹配
+        reply->set_updatenextindex(args->prevlogindex());
+        for(int index=args->prevlogindex();index>=m_lastSnapshotIncludeIndex;index--){
+            //这里就是往前去匹配
+            if(getLogTermFromLogIndex(index)!=getLogTermFromLogIndex(argsp>prevlogindex())){
+                reply->set_updatenextindex(index+1);
+                break;
+            }
+        }
+        reply->set_success(false);
+        reply->set_term(m_currentTerm);
+        return;
     }
 }
