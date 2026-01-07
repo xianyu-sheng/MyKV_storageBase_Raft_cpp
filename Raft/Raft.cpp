@@ -739,9 +739,12 @@ void Raft::AppendEntries1(const raftRpcProtoc::AppendEntreisArgs* args,raftRpcPr
         //所以就需要发送期望领导发送日志的Index值，这个应该由接收者去设置期望的Index
         //并且优化RPC请求的次数
         //注意：如果没有出现任期不匹配的情况可能是其他矛盾就不会利用到for循环的优化而是一步步的向前匹配
+
+        //这里我之前不理解的怎样一个加速法：https://gemini.google.com/share/1bccfd15d711
         reply->set_updatenextindex(args->prevlogindex());
         for(int index=args->prevlogindex();index>=m_lastSnapshotIncludeIndex;index--){
             //这里就是往前去匹配
+            //将Follower的prvlogindex位置的任期与Follower前面的位置不断对比 直到达到一个与他不同的位置 然后实现跳转term的的优化
             if(getLogTermFromLogIndex(index)!=getLogTermFromLogIndex(argsp>prevlogindex())){
                 reply->set_updatenextindex(index+1);
                 break;
@@ -751,4 +754,29 @@ void Raft::AppendEntries1(const raftRpcProtoc::AppendEntreisArgs* args,raftRpcPr
         reply->set_term(m_currentTerm);
         return;
     }
+}
+
+//持久化函数
+//这里卡哥写的不清楚 我们后续需要进一步的重构
+void Raft::persist() {
+    // 1. 准备需要持久化的数据结构
+    BoostPersistRaftNode persistData;
+    persistData.m_currentTerm = m_currentTerm;
+    persistData.m_votedFor = m_votedFor;
+    persistData.m_lastSnapshotIncludeIndex = m_lastSnapshotIncludeIndex;
+    persistData.m_lastSnapshotIncludeTerm = m_lastSnapshotIncludeTerm;
+
+    // 2. 序列化日志条目（仅保存日志中的命令，避免重复存储索引和任期，因为索引和任期可通过逻辑计算恢复）
+    persistData.m_logs.clear();
+    for (const auto& log : m_logs) {
+        persistData.m_logs.push_back(log.command()); // 假设 LogEntry 的 command 是需要持久化的核心数据
+    }
+
+    // 3. 使用 Boost 序列化将数据转换为字符串
+    std::stringstream ss;
+    boost::archive::text_oarchive oa(ss);
+    oa << persistData; // 序列化到字符串流
+
+    // 4. 调用 Persister 保存序列化后的数据
+    m_persister->SaveRaftState(ss.str());
 }
