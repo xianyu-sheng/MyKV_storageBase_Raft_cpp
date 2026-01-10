@@ -780,3 +780,28 @@ void Raft::persist() {
     // 4. 调用 Persister 保存序列化后的数据
     m_persister->SaveRaftState(ss.str());
 }
+
+
+//在写入到KV状态机之前，检验命令是否在Raft集群中保持一致了
+bool isCanWriteToKV(){
+        // 外层判断：请求未超时 且 存在Raft集群已提交的操作（raftCommitOp）
+    if (!chForRaftIndex->timeOutPop(CONSENSUS_TIMEOUT) && raftCommitOp) { 
+        // 未超时：校验Raft提交的操作是否和当前客户端请求匹配
+        if (raftCommitOp.ClientId == op.ClientId && raftCommitOp.RequestId == op.RequestId) { 
+            // 匹配：说明该请求的日志已在Raft集群达成多数派共识（提交成功）
+            reply->set_err(OK());
+        } else { 
+            // 不匹配：Leader变更导致日志被覆盖，当前Leader无效，让客户端重试
+            reply->set_err(ErrWrongLeader);
+        }
+    } else { 
+        // 超时分支：请求已超时
+        if (ifRequestDuplicate(op.ClientId, op.RequestId)) { 
+            // 是重复请求：即使超时也返回OK（幂等性保证，避免客户端重复处理）
+            reply->set_ok(OK());
+        } else { 
+            // 非重复请求：返回Leader错误，让客户端重新找Leader尝试
+            reply->set_err(ErrWrongLeader);
+        }
+    }
+}
