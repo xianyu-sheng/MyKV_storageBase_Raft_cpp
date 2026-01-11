@@ -1,84 +1,106 @@
 #include "clerk.h"
+#include <fstream>
+#include <iostream>
+#include <unistd.h> // for usleep
 
-//实现clerk类
-//初始化客户端
-// clerk.cpp
 void Clerk::Init(const std::string& configFile) {
-    // 读取配置文件（格式示例：每行一个节点，如 "127.0.0.1:8080"）
     std::ifstream file(configFile);
+    if (!file.is_open()) {
+        std::cerr << "Config file error!" << std::endl;
+        return;
+    }
     std::string line;
     while (std::getline(file, line)) {
         if (line.empty()) continue;
-        // 解析 IP 和端口
         size_t colon = line.find(':');
         std::string ip = line.substr(0, colon);
         short port = std::stoi(line.substr(colon + 1));
-        // 创建 RPC 通道
-        channels_.emplace_back(new MprpcChannel(ip, port, true));
+        // 使用 make_shared
+        channels_.emplace_back(std::make_shared<MprpcChannel>(ip, port, true));
     }
-    currentLeaderIndex_ = 0; // 初始从第一个节点开始尝试
+    currentLeaderIndex_ = 0;
     requestId_ = 0;
+    
+    // 生成随机 ClientID (简单实现，实际生产可能需要更复杂的UUID)
+    std::srand(std::time(nullptr));
+    clientId_ = std::rand(); 
 }
 
 
-// clerk.cpp
 void Clerk::Put(const std::string& key, const std::string& value) {
-    requestId_++; // 递增请求 ID，确保幂等性
+    requestId_++; 
     kvserverrpc::PutRequest request;
-    kvserverrpc::PutResponse response;
-    MprpcController controller;
-
     request.set_key(key);
     request.set_value(value);
+    request.set_clientid(clientId_); // 务必在 proto 中添加此字段
     request.set_requestid(requestId_);
 
     while (true) {
-        // 向当前节点发送 Put 请求
+        kvserverrpc::PutResponse response;
+        MprpcController controller;
+        
         auto& channel = channels_[currentLeaderIndex_];
         kvserverrpc::kvServerRpc_Stub stub(channel.get());
+        
+        // 发起 RPC
         stub.Put(&controller, &request, &response, nullptr);
 
         if (!controller.Failed()) {
-            // 若成功，检查是否为 Leader 处理
             if (response.issuccess()) {
-                break; // 写入成功
-            } else if (response.has_leaderhint()) {
-                // 若返回新 Leader 地址，更新索引并重试
+                return; // 成功直接返回
+            } 
+            // 如果 server 告诉我们要去连谁，更新 index 并 continue
+            if (response.has_leaderhint()) {
                 currentLeaderIndex_ = response.leaderhint();
+                // ！！！关键修改：收到 hint 后直接重试该节点，不要往下走去 +1
+                usleep(10000); // 稍微停顿一下防止死循环
+                continue; 
             }
         }
 
-        // 失败或非 Leader，轮询下一个节点
+        // 只有在网络失败、或者对方不是 Leader 且没有给出 Hint 时，才轮询
         currentLeaderIndex_ = (currentLeaderIndex_ + 1) % channels_.size();
-        controller.Reset(); // 重置控制器
-        usleep(1000); // 短暂休眠避免频繁重试
+        
+        // 增加睡眠时间，避免选举期间风暴攻击 (100ms)
+        usleep(100000); 
     }
 }
 
-std::string Clerk::Get(const std::string& key) {
-    requestId_++;
-    kvserverrpc::GetRequest request;
-    kvserverrpc::GetResponse response;
-    MprpcController controller;
-
+void Clerk::Put(const std::string& key, const std::string& value) {
+    requestId_++; 
+    kvserverrpc::PutRequest request;
     request.set_key(key);
+    request.set_value(value);
+    request.set_clientid(clientId_); // 务必在 proto 中添加此字段
     request.set_requestid(requestId_);
 
     while (true) {
+        kvserverrpc::PutResponse response;
+        MprpcController controller;
+        
         auto& channel = channels_[currentLeaderIndex_];
         kvserverrpc::kvServerRpc_Stub stub(channel.get());
-        stub.Get(&controller, &request, &response, nullptr);
+        
+        // 发起 RPC
+        stub.Put(&controller, &request, &response, nullptr);
 
         if (!controller.Failed()) {
             if (response.issuccess()) {
-                return response.value(); // 返回读取到的值
-            } else if (response.has_leaderhint()) {
+                return; // 成功直接返回
+            } 
+            // 如果 server 告诉我们要去连谁，更新 index 并 continue
+            if (response.has_leaderhint()) {
                 currentLeaderIndex_ = response.leaderhint();
+                // ！！！关键修改：收到 hint 后直接重试该节点，不要往下走去 +1
+                usleep(10000); // 稍微停顿一下防止死循环
+                continue; 
             }
         }
 
+        // 只有在网络失败、或者对方不是 Leader 且没有给出 Hint 时，才轮询
         currentLeaderIndex_ = (currentLeaderIndex_ + 1) % channels_.size();
-        controller.Reset();
-        usleep(1000);
+        
+        // 增加睡眠时间，避免选举期间风暴攻击 (100ms)
+        usleep(100000); 
     }
 }
