@@ -1,6 +1,51 @@
 //在保证线性一致性之前我们如何读KV
 // 核心函数：处理Get操作（保证线性一致性）
 //函数理解链接：https://www.doubao.com/thread/wa43737e2bbd8fc16
+KvServer::KvServer(std::shared_ptr<Raft> raftNode)
+    : m_raftNode(std::move(raftNode)),
+      m_kvdb(/* max_level = */ 12)  // 跳表最大层数自己定，一个常见值是 12 或 16
+{
+}
+
+void KvServer::ExecuteGetOpOnKVDB(const Op& op, std::string* value, bool* exist) {
+    std::string out;
+    bool found = m_kvdb.search_element(op.Key, &out);  // 调用你新加的接口
+
+    if (found) {
+        *exist = true;
+        *value = out;
+    } else {
+        *exist = false;
+        value->clear();
+    }
+}
+void KvServer::ExecutePutAppendOnKVDB(const Op& op) {
+    if (op.Operation == "Put") {
+        // Put 语义：直接覆盖
+        m_kvdb.insert_element(op.Key, op.value);
+    } else if (op.Operation == "Append") {
+        // Append 语义：取出旧值 + 拼接
+        std::string oldVal;
+        bool exist = m_kvdb.search_element(op.Key, &oldVal);
+
+        std::string newVal = exist ? (oldVal + op.value) : op.value;
+        m_kvdb.insert_element(op.Key, newVal);
+    }
+}
+bool KvServer::ifRequestDuplicate(const std::string& clientId, int requestId) {
+    auto it = m_lastRequests.find(clientId);
+    if (it == m_lastRequests.end()) {
+        return false;//表示是新客户端
+    }
+    return requestId <= it->second.lastRequestId;
+}
+
+//将完成的请求信息记录起来，以供后面的重复性查询
+void KvServer::recordRequestResult(const Op& op, const std::string& lastValue) {
+    auto& rec = m_lastRequests[op.ClientId];
+    rec.lastRequestId = op.RequestId;
+    rec.lastValue     = lastValue;  // 对 Put/Append 可以根据需要留空或记录新值
+}
 void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetReply* reply){
     Op op;
     op.Operation="Get";
@@ -79,4 +124,83 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetRepl
                 reply->set_err(ErrWrongLeader);
             }
         }
+}
+
+void KvServer::PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,
+                         raftKVRpcProtoc::PutAppendReply* reply) {
+    Op op;
+    op.Operation = args->op();        // "Put" or "Append"
+    op.Key       = args->key();
+    op.value     = args->value();
+    op.ClientId  = args->clientid();
+    op.RequestId = args->requestid();
+
+    int index = -1;
+    bool isLeader = false;
+    m_raftNode->Start(op, &index, &isLeader);
+
+    if (!isLeader) {
+        reply->set_err(ErrWrongLeader);
+        return;
+    }
+
+    // 和 Get 一样：用 waitApplyCh[index] 等待 Raft 提交结果
+    std::shared_ptr<LockQueue<Op>> ch;
+    {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        if (waitApplyCh.count(index) == 0) {
+            waitApplyCh[index] = std::make_shared<LockQueue<Op>>();
+        }
+        ch = waitApplyCh[index];
+    }
+
+    Op raftCommitOp;
+    if (!ch->timeOutPop(CONSENSUS_TIMEOUT, &raftCommitOp)) {
+        // 超时：检查是否是重复请求
+        if (ifRequestDuplicate(op.ClientId, op.RequestId)) {
+            reply->set_err(OK);
+        } else {
+            reply->set_err(ErrWrongLeader);
+        }
+    } else {
+        // 拿到提交的 Op，验证是不是本次请求
+        if (raftCommitOp.ClientId == op.ClientId &&
+            raftCommitOp.RequestId == op.RequestId) {
+            reply->set_err(OK);
+        } else {
+            reply->set_err(ErrWrongLeader);
+        }
+    }
+}
+
+void KvServer::Apply(const ApplyMsg& msg) {
+    Op op = decodeOp(msg.command);   // 按你序列化 Op 的方式反序列化
+    int index = msg.index;
+
+    // 去重 + 写入跳表
+    if (!ifRequestDuplicate(op.ClientId, op.RequestId)) {
+        if (op.Operation == "Get") {
+            // Get 日志一般不改数据，你可以选择不做任何 KV 更新
+            std::string value;
+            bool exist;
+            ExecuteGetOpOnKVDB(op, &value, &exist);
+            recordRequestResult(op, exist ? value : "");
+        } else {
+            ExecutePutAppendOnKVDB(op);
+            recordRequestResult(op, /* 可选：记录最新 value */ "");
+        }
+    }
+
+    // 唤醒等待该 index 的 RPC
+    std::shared_ptr<LockQueue<Op>> ch;
+    {
+        std::lock_guard<std::mutex> lk(m_mtx);
+        auto it = waitApplyCh.find(index);
+        if (it != waitApplyCh.end()) {
+            ch = it->second;
+        }
+    }
+    if (ch) {
+        ch->push(op);
+    }
 }
