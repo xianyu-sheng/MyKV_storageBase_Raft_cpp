@@ -1,6 +1,7 @@
 #ifndef RAFT_H
 #define RAFT_H
 ////方便网络分区的时候debug，网络异常的时候为disconnected,只要网络正常的就为AppNormal，防止match
+#include "ApplyMsg.h"
 constexpr int Disconnected = 0;
 constexpr int AppNormal = 1;
 
@@ -11,7 +12,6 @@ constexpr int Expire=2;//投票（消息、竞选者）过期
 constexpr int Normal=3;
 
 class Persister;
-class ApplyMsg;
 class Raft : public raftRpcProtoc::raftRpc{
 private:
     std::mutex m_mtx;
@@ -84,7 +84,7 @@ private:
         void pushMsgToKVserver(ApplyMsg msg);//向上层KVserver发送消息
         void readPersist(std::string data);//读取持久化数据
         std::string persistDate();//持久化数据
-        void Start(Op command,int* newLogindex);//启动
+        void Start(const Op& command, int* newLogIndex, bool* isLeader);
         void Raft::init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::shared_ptr<Persister> persist,
                 std::shared_ptr<LockQueue<ApplyMsg>> applyCh);//初始化
         bool callAppendEntriesRpc(int peerId, 

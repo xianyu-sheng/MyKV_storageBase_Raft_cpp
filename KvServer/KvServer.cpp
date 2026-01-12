@@ -1,43 +1,45 @@
 //在保证线性一致性之前我们如何读KV
 // 核心函数：处理Get操作（保证线性一致性）
 //函数理解链接：https://www.doubao.com/thread/wa43737e2bbd8fc16
+
+#include "op_coder.h"
 KvServer::KvServer(std::shared_ptr<Raft> raftNode)
     : m_raftNode(std::move(raftNode)),
       m_kvdb(/* max_level = */ 12)  // 跳表最大层数自己定，一个常见值是 12 或 16
 {
 }
 
-void KvServer::ExecuteGetOpOnKVDB(const Op& op, std::string* value, bool* exist) {
+void KvServer::ExecuteGetOpOnKVDB(const Op& op, std::string* Value, bool* exist) {
     std::string out;
     bool found = m_kvdb.search_element(op.Key, &out);  // 调用你新加的接口
 
     if (found) {
         *exist = true;
-        *value = out;
+        *Value = out;
     } else {
         *exist = false;
-        value->clear();
+        Value->clear();
     }
 }
 void KvServer::ExecutePutAppendOnKVDB(const Op& op) {
     if (op.Operation == "Put") {
         // Put 语义：直接覆盖
-        m_kvdb.insert_element(op.Key, op.value);
+        m_kvdb.insert_element(op.Key, op.Value);
     } else if (op.Operation == "Append") {
         // Append 语义：取出旧值 + 拼接
         std::string oldVal;
         bool exist = m_kvdb.search_element(op.Key, &oldVal);
 
-        std::string newVal = exist ? (oldVal + op.value) : op.value;
+        std::string newVal = exist ? (oldVal + op.Value) : op.Value;
         m_kvdb.insert_element(op.Key, newVal);
     }
 }
-bool KvServer::ifRequestDuplicate(const std::string& clientId, int requestId) {
-    auto it = m_lastRequests.find(clientId);
+bool KvServer::ifRequestDuplicate(const std::string& ClientId, int RequestId) {
+    auto it = m_lastRequests.find(ClientId);
     if (it == m_lastRequests.end()) {
         return false;//表示是新客户端
     }
-    return requestId <= it->second.lastRequestId;
+    return RequestId <= it->second.lastRequestId;
 }
 
 //将完成的请求信息记录起来，以供后面的重复性查询
@@ -49,15 +51,14 @@ void KvServer::recordRequestResult(const Op& op, const std::string& lastValue) {
 void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetReply* reply){
     Op op;
     op.Operation="Get";
-    op.Key=args->key();
-    op.value="";
-    op.ClientId=args->clientid();
-    op.RequestId=args->requestid();
+    op.Key=args->Key();
+    op.Value="";
+    op.ClientId=args->ClientId();
+    op.RequestId=args->RequestId();
 
     int raftindex=-1;
-    int _=-1;
     bool isLeader=false;
-    m_raftNode->Start(op,&_,&isLeader);//raftindex，raft预计的logIndex,虽然是预计，但是正确情况下，是准确的，op的具体内容对raft来说，是隔离的
+    m_raftNode->Start(op,&raftindex,&isLeader);//raftindex，raft预计的logIndex,虽然是预计，但是正确情况下，是准确的，op的具体内容对raft来说，是隔离的
 
     if(!isLeader){
         reply->set_err(ErrWrongLeader);
@@ -86,19 +87,19 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetRepl
             m_raftNode->GetState(&raftState, &isLeader);
 
             // 关键判断：请求是重复的 + 当前节点是Leader
-            if (ifRequestDuplicate(op.clientId, op.requestId) && isLeader) {
+            if (ifRequestDuplicate(op.ClientId, op.RequestId) && isLeader) {
                 // 逻辑：超时不代表日志没提交，只是集群没及时响应
                 // 但如果是重复的Get请求（已处理过），可安全重读（不违反线性一致性）
-                std::string value;
+                std::string Value;
                 bool exist = false;
                 // 直接在本地KV执行Get
-                ExecuteGetOpOnKVDB(op, &value, &exist);
+                ExecuteGetOpOnKVDB(op, &Value, &exist);
                 if (exist) {
                     reply->set_err(OK);
-                    reply->set_value(value);
+                    reply->set_Value(Value);
                 } else {
                     reply->set_err(ErrNoKey);
-                    reply->set_value("");
+                    reply->set_Value("");
                 }
             } else {
                 // 非重复请求/非Leader：返回WrongLeader，让客户端换节点重试
@@ -107,17 +108,17 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetRepl
         } else {
             // 分支2：Raft日志已成功提交（超时前拿到了提交确认）
             // 验证：确保提交的日志就是当前请求的日志（防串请求）
-            if (raftCommitOp.clientId == op.clientId && raftCommitOp.requestId == op.requestId) {
-                std::string value;
+            if (raftCommitOp.ClientId == op.ClientId && raftCommitOp.RequestId == op.RequestId) {
+                std::string Value;
                 bool exist = false;
                 // 执行Get操作（此时日志已提交，线性一致性有保障）
-                ExecuteGetOpOnKVDB(op, &value, &exist);
+                ExecuteGetOpOnKVDB(op, &Value, &exist);
                 if (exist) {
                     reply->set_err(OK);
-                    reply->set_value(value);
+                    reply->set_Value(Value);
                 } else {
                     reply->set_err(ErrNoKey);
-                    reply->set_value("");
+                    reply->set_Value("");
                 }
             } else {
                 // 异常情况：提交的日志和当前请求不匹配（理论上不会发生）
@@ -130,10 +131,10 @@ void KvServer::PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,
                          raftKVRpcProtoc::PutAppendReply* reply) {
     Op op;
     op.Operation = args->op();        // "Put" or "Append"
-    op.Key       = args->key();
-    op.value     = args->value();
-    op.ClientId  = args->clientid();
-    op.RequestId = args->requestid();
+    op.Key       = args->Key();
+    op.Value     = args->Value();
+    op.ClientId  = args->ClientId();
+    op.RequestId = args->RequestId();
 
     int index = -1;
     bool isLeader = false;
@@ -181,13 +182,13 @@ void KvServer::Apply(const ApplyMsg& msg) {
     if (!ifRequestDuplicate(op.ClientId, op.RequestId)) {
         if (op.Operation == "Get") {
             // Get 日志一般不改数据，你可以选择不做任何 KV 更新
-            std::string value;
+            std::string Value;
             bool exist;
-            ExecuteGetOpOnKVDB(op, &value, &exist);
-            recordRequestResult(op, exist ? value : "");
+            ExecuteGetOpOnKVDB(op, &Value, &exist);
+            recordRequestResult(op, exist ? Value : "");
         } else {
             ExecutePutAppendOnKVDB(op);
-            recordRequestResult(op, /* 可选：记录最新 value */ "");
+            recordRequestResult(op, /* 可选：记录最新 Value */ "");
         }
     }
 

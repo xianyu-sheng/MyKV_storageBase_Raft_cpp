@@ -7,6 +7,7 @@
 #include "../Raft/raft.h"//RAft类
 #include "../Skiplist-CPP/skiplist.h"//SkipList类
 #include "../raftKVRpcProtoc/raftKVRpcProtoc.pb.h"//RaftKV的RPC协议
+#include "../Raft/ApplyMsg.h"
 
 //日志命令结构
 struct Op{
@@ -54,4 +55,4 @@ class KvServer : public raftKVRpcProtoc::kvServerRpc{
         std::string lastValue;  // 对 Get/Put/Append 的上次返回值
     };
     std::unordered_map<std::string, RequestRecord> m_lastRequests; // key: ClientId
-}
+};
