@@ -16,9 +16,9 @@ message LogEntry{
 message AppendEntriesArgs{
     int32 Term=1;
     int32 LeaderId=2;
-    int32 PreLogIndex=3;
-    int32 PreLogTerm=4;
-    repeated LogEntry Entry=5;
+    int32 PrevLogIndex=3;
+    int32 PrevLogTerm=4;
+    repeated LogEntry Entries=5;
     int32 LeaderCommit=6;
 }
 
@@ -26,7 +26,7 @@ message AppendEntriesReply{
     int32 Term=1;
     bool Success=2;
     int32 UpdateNextIndex=3;
-    int32 Appstate=4;
+    int32 AppState=4;
 }
 message RequestVoteArgs{
     int32 Term=1;
@@ -46,7 +46,7 @@ message InstallSnapshotRequest{
     int32 Term=2;
     int32 LastSnapShotIncludeIndex=3;
     int32 LastSnapShotIncludeTerm=4;
-    bytes Date=5;//快照信息
+    bytes SnapshotData=5;//快照信息
 }
 
 //InstallSnapshotResponse 只用返回term 因为对于快照只要Term是符合的 就是无条件接受的
