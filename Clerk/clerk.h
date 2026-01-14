@@ -11,7 +11,8 @@ public:
     //初始化版本clerk（生成ClientID，重置requestID）
     //注意：myRPC框架自身的INIT在main里通过KrpcApplication::init完成
     void Init(const std::string& configFile="");
-
+    void Put(const std::string& key, const std::string& value);
+    std::string Get(const std::string& key);
 private:
     int RequestId_;
     int ClientId_; // 新增：客户端唯一标识
