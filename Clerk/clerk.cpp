@@ -3,6 +3,7 @@
 #include <iostream>
 #include <unistd.h> // for usleep
 
+/*
 void Clerk::Init(const std::string& configFile) {
     std::ifstream file(configFile);
     if (!file.is_open()) {
@@ -103,4 +104,12 @@ void Clerk::Put(const std::string& key, const std::string& value) {
         // 增加睡眠时间，避免选举期间风暴攻击 (100ms)
         usleep(100000); 
     }
+}
+    */
+
+//新init 只做本地初始化  不在读  config文件
+void Clerk::Init(const std::string& configFile){
+    RequestId_=0;
+    std::srand(std::time(nullptr));
+    ClientId_=std::rand();
 }

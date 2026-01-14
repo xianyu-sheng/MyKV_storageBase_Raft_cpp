@@ -1,20 +1,18 @@
 #pragma once
+#include <random>//用于生成随机ID
 #include <string>
-#include <vector>
-#include <memory>
-#include <random> // 用于生成随机ID
-#include "rpc/mprpcchannel.h"
-#include "raftRpcPro/kvServerRPC.pb.h"
+#include "../myRPC/User/KrpcChannel.h"
+#include "../myRPC/Server/KrpcController.h"
+#include "../raftKVRpcProtoc/raftKCProtoc.pb.h"
+
 
 class Clerk {
 public:
-    void Init(const std::string& configFile);
-    void Put(const std::string& key, const std::string& value);
-    std::string Get(const std::string& key);
+    //初始化版本clerk（生成ClientID，重置requestID）
+    //注意：myRPC框架自身的INIT在main里通过KrpcApplication::init完成
+    void Init(const std::string& configFile="");
 
 private:
-    std::vector<std::shared_ptr<MprpcChannel>> channels_;
-    int currentLeaderIndex_;
-    int requestId_;
-    int clientId_; // 新增：客户端唯一标识
+    int RequestId_;
+    int ClientId_; // 新增：客户端唯一标识
 };
