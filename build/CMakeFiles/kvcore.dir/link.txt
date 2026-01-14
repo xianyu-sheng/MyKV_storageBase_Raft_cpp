@@ -1,0 +1,2 @@
+/usr/bin/ar qc libkvcore.a CMakeFiles/kvcore.dir/Raft/Raft.cpp.o CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.o CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o
+/usr/bin/ranlib libkvcore.a
