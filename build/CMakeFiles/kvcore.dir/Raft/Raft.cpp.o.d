@@ -160,6 +160,10 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: \
  /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h \
  /usr/include/c++/11/stdexcept /usr/include/c++/11/bits/std_mutex.h \
  /usr/include/c++/11/bits/unique_lock.h \
+ /usr/include/c++/11/condition_variable /usr/include/c++/11/queue \
+ /usr/include/c++/11/deque /usr/include/c++/11/bits/stl_deque.h \
+ /usr/include/c++/11/bits/deque.tcc /usr/include/c++/11/bits/stl_heap.h \
+ /usr/include/c++/11/bits/stl_queue.h \
  /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Raft/../Proto/raftKVRpcProtoc/KvServerRPC.pb.h \
  /usr/include/google/protobuf/port_def.inc \
  /usr/include/google/protobuf/port_undef.inc \
@@ -209,7 +213,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: \
  /usr/include/google/protobuf/stubs/common.h \
  /usr/include/c++/11/algorithm /usr/include/c++/11/bits/stl_algo.h \
  /usr/include/c++/11/bits/algorithmfwd.h \
- /usr/include/c++/11/bits/stl_heap.h \
  /usr/include/c++/11/bits/uniform_int_dist.h /usr/include/c++/11/iostream \
  /usr/include/c++/11/ostream /usr/include/c++/11/ios \
  /usr/include/c++/11/bits/ios_base.h \
@@ -681,4 +684,14 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: \
  /usr/include/boost/serialization/detail/is_default_constructible.hpp \
  /usr/include/boost/utility/enable_if.hpp \
  /usr/include/boost/core/enable_if.hpp \
- /usr/include/boost/serialization/collection_traits.hpp
+ /usr/include/boost/serialization/collection_traits.hpp \
+ /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/op_coder.h \
+ /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/kvServer.h \
+ /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/../Raft/raft.h \
+ /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/../Skiplist-CPP/skiplist.h \
+ /usr/include/c++/11/fstream \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
+ /usr/include/c++/11/bits/fstream.tcc \
+ /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/../Proto/raftKVRpcProtoc/KvServerRPC.pb.h \
+ /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/../Proto/raftRpcProtoc/raftRPC.pb.h
