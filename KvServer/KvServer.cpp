@@ -3,6 +3,10 @@
 //函数理解链接：https://www.doubao.com/thread/wa43737e2bbd8fc16
 
 #include "op_coder.h"
+namespace{
+    constexpr int debugMul=1;
+    constexpr int CONSENSUS_TIMEOUT=500*debugMul;
+}
 KvServer::KvServer(std::shared_ptr<Raft> raftNode)
     : m_raftNode(std::move(raftNode)),
       m_kvdb(/* max_level = */ 12)  // 跳表最大层数自己定，一个常见值是 12 或 16
@@ -48,13 +52,22 @@ void KvServer::recordRequestResult(const Op& op, const std::string& lastValue) {
     rec.lastRequestId = op.RequestId;
     rec.lastValue     = lastValue;  // 对 Put/Append 可以根据需要留空或记录新值
 }
+void KvServer::Get(::google::protobuf::RpcController* controller,
+                    const raftKVRpcProtoc::GetArgs* request,
+                    raftKVRpcProtoc::GetReply* response,
+                    ::google::protobuf::Closure* done){
+                        (void)controller;//如果暂时不用 可以忽略此参数
+                        // 调用不带 controller/done 的业务逻辑版本
+                        KvServer::Get(request,response);
+                        if(done)    done->Run();//按Protobuf规范，最后吊用回调
+                    }
 void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetReply* reply){
     Op op;
     op.Operation="Get";
-    op.Key=args->Key();
+    op.Key=args->key();
     op.Value="";
-    op.ClientId=args->ClientId();
-    op.RequestId=args->RequestId();
+    op.ClientId=args->clientid();
+    op.RequestId=args->requestid();
 
     int raftindex=-1;
     bool isLeader=false;
@@ -96,10 +109,10 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetRepl
                 ExecuteGetOpOnKVDB(op, &Value, &exist);
                 if (exist) {
                     reply->set_err(OK);
-                    reply->set_Value(Value);
+                    reply->set_value(Value);
                 } else {
                     reply->set_err(ErrNoKey);
-                    reply->set_Value("");
+                    reply->set_value("");
                 }
             } else {
                 // 非重复请求/非Leader：返回WrongLeader，让客户端换节点重试
@@ -115,10 +128,10 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetRepl
                 ExecuteGetOpOnKVDB(op, &Value, &exist);
                 if (exist) {
                     reply->set_err(OK);
-                    reply->set_Value(Value);
+                    reply->set_value(Value);
                 } else {
                     reply->set_err(ErrNoKey);
-                    reply->set_Value("");
+                    reply->set_value("");
                 }
             } else {
                 // 异常情况：提交的日志和当前请求不匹配（理论上不会发生）
@@ -127,14 +140,25 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetRepl
         }
 }
 
+void KvServer::PutAppend(::google::protobuf::RpcController* controller,
+                   const raftKVRpcProtoc::PutAppendArgs* request,
+                   raftKVRpcProtoc::PutAppendReply* response,
+                   ::google::protobuf::Closure* done){
+                    (void)controller;
+                    // 调用不带 controller/done 的业务逻辑版本
+                    KvServer::PutAppend(request,response);
+                    if(done){
+                        done->Run();
+                    }    
+                   }
 void KvServer::PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,
                          raftKVRpcProtoc::PutAppendReply* reply) {
     Op op;
     op.Operation = args->op();        // "Put" or "Append"
-    op.Key       = args->Key();
-    op.Value     = args->Value();
-    op.ClientId  = args->ClientId();
-    op.RequestId = args->RequestId();
+    op.Key       = args->key();
+    op.Value     = args->value();
+    op.ClientId  = args->clientid();
+    op.RequestId = args->requestid();
 
     int index = -1;
     bool isLeader = false;

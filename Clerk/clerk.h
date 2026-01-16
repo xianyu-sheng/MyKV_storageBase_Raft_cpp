@@ -3,7 +3,8 @@
 #include <string>
 #include "../myRPC/User/KrpcChannel.h"
 #include "../myRPC/Server/KrpcController.h"
-#include "../raftKVRpcProtoc/raftKCProtoc.pb.h"
+#include "../Proto/raftKVRpcProtoc/KvServerRPC.pb.h"
+#include "../Proto/raftRpcProtoc/raftRPC.pb.h"
 
 
 class Clerk {

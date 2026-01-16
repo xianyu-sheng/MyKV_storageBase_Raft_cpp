@@ -6,8 +6,10 @@
 #include <mutex>
 #include "../Raft/raft.h"//RAft类
 #include "../Skiplist-CPP/skiplist.h"//SkipList类
-#include "../raftKVRpcProtoc/raftKVRpcProtoc.pb.h"//RaftKV的RPC协议
+#include "../Proto/raftKVRpcProtoc/KvServerRPC.pb.h"
+#include "../Proto/raftRpcProtoc/raftRPC.pb.h"
 #include "../Raft/ApplyMsg.h"
+#include <google/protobuf/service.h>
 
 //日志命令结构
 struct Op{
@@ -25,13 +27,24 @@ static const std::string ErrNoKey="ErrNoKey";
 static const std::string ErrWrongLeader="ErrWrongLeader";
 
 //Kvserver负责实现kvserverRPC定义RPC接口
-class KvServer : public raftKVRpcProtoc::kvServerRpc{
+class KvServer:public raftKVRpcProtoc::kvServerRpc{
     public:
     //构造函数：传入raft节点指针等
     KvServer(std::shared_ptr<Raft> raftNode);
     //Rpc接口(proto里定义的两个RPC接口)
-    void Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetReply* reply) override;
-    void PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,raftKVRpcProtoc::PutAppendReply* reply) override;
+    void Get(::google::protobuf::RpcController* controller,
+             const raftKVRpcProtoc::GetArgs* request,
+             raftKVRpcProtoc::GetReply* response,
+             ::google::protobuf::Closure* done) override;
+    void PutAppend(::google::protobuf::RpcController* controller,
+                   const raftKVRpcProtoc::PutAppendArgs* request,
+                   raftKVRpcProtoc::PutAppendReply* response,
+                   ::google::protobuf::Closure* done) override;
+    // 供上面包装函数调用的实际业务逻辑版本（不带 controller/done）
+    void Get(const raftKVRpcProtoc::GetArgs* args,
+             raftKVRpcProtoc::GetReply* reply);
+    void PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,
+                   raftKVRpcProtoc::PutAppendReply* reply);
     //提供给Raft的入口，Raft在apply日志时，调用这个接口吧ApplyMsg推给KvServer
     void Apply(const ApplyMsg& msg);
 
