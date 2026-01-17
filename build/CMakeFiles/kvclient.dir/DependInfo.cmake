@@ -9,7 +9,6 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/ClientMain.cpp" "CMakeFiles/kvclient.dir/ClientMain.cpp.o" "gcc" "CMakeFiles/kvclient.dir/ClientMain.cpp.o.d"
-  "/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/myRPC/User/KrpcChannel.cc" "CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.o" "gcc" "CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

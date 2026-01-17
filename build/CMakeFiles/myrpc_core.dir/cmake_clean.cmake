@@ -11,6 +11,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcLogger.cc.o.d"
   "CMakeFiles/myrpc_core.dir/myRPC/Server/Krpcapplication.cc.o"
   "CMakeFiles/myrpc_core.dir/myRPC/Server/Krpcapplication.cc.o.d"
+  "CMakeFiles/myrpc_core.dir/myRPC/User/KrpcChannel.cc.o"
+  "CMakeFiles/myrpc_core.dir/myRPC/User/KrpcChannel.cc.o.d"
   "CMakeFiles/myrpc_core.dir/myRPC/ZooKeeper/ZooKeeper.cc.o"
   "CMakeFiles/myrpc_core.dir/myRPC/ZooKeeper/ZooKeeper.cc.o.d"
   "libmyrpc_core.a"

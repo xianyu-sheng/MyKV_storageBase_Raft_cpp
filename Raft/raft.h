@@ -11,6 +11,8 @@
 #include <queue>
 #include "../Proto/raftKVRpcProtoc/KvServerRPC.pb.h"
 #include "../Proto/raftRpcProtoc/raftRPC.pb.h"
+#include "../myRPC/User/KrpcChannel.h"
+#include "../myRPC/Server/KrpcController.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -260,6 +262,52 @@ class RaftRpcUtil {
                            raftRpcProtoc::RequestVoteReply* reply) = 0;
   virtual bool InstallSnapshot(const raftRpcProtoc::InstallSnapshotRequest* request,
                                raftRpcProtoc::InstallSnapshotResponse* response) = 0;
+};
+class KrpcRaftRpcClient : public RaftRpcUtil{
+    public:
+      KrpcRaftRpcClient(const std::string& ip,uint16_t port):m_ip(ip),m_port(port){}
+      bool AppendEntries(const raftRpcProtoc::AppendEntriesArgs* args,
+                        raftRpcProtoc::AppendEntriesReply* reply) override{
+                            KrpcChannel channel(false);
+                            //TODO:配置Channel连接到m_ip:m_port
+                            raftRpcProtoc::raftRpc_Stub stub(&channel);
+                            KrpcController controller;
+                            stub.AppendEntries(&controller,args,reply,nullptr);
+                            if(controller.Failed()){
+                              //网络超时
+                              return false;
+                            }
+                            return true;
+                        }
+      bool RequestVote(const raftRpcProtoc::RequestVoteArgs* args,
+                       raftRpcProtoc::RequestVoteReply* reply) override{
+                            KrpcChannel channel(false);
+                            //TODO:配置Channel连接到m_ip:m_port
+                            raftRpcProtoc::raftRpc_Stub stub(&channel);
+                            KrpcController controller;
+                            stub.RequestVote(&controller,args,reply,nullptr);
+                            if(controller.Failed()){
+                              //网络超时
+                              return false;
+                            }
+                            return true;
+                        }
+      bool InstallSnapshot(const raftRpcProtoc::InstallSnapshotRequest* request,
+                          raftRpcProtoc::InstallSnapshotResponse* response) override{
+                            KrpcChannel channel(false);
+                            //TODO:配置Channel连接到m_ip:m_port
+                            raftRpcProtoc::raftRpc_Stub stub(&channel);
+                            KrpcController controller;
+                            stub.InstallSnapshot(&controller,request,response,nullptr);
+                            if(controller.Failed()){
+                              //网络超时
+                              return false;
+                            }
+                            return true;
+                        }
+    private:
+      std::string m_ip;
+      uint16_t m_port;
 };
 
 // 一个简单的线程安全队列，供 Raft 和 KvServer 之间传递 ApplyMsg / Op 使用

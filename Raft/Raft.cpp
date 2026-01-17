@@ -80,6 +80,116 @@ int Raft::getLogTermFromLogIndex(int logIndex) {
     return m_logs[sliceIdx].logterm();
 }
 
+void Raft::GetState(int* term, bool* isLeader) {
+    std::lock_guard<std::mutex> lg(m_mtx);
+    if (term) {
+        *term = m_currentTerm;
+    }
+    if (isLeader) {
+        *isLeader = (m_status == Leader);
+    }
+}
+
+int Raft::getLastLogIndex() {
+    // 日志全局索引 = 快照中最后包含的索引 + 当前内存日志条目数量
+    return m_lastSnapshotIncludeIndex + static_cast<int>(m_logs.size());
+}
+
+int Raft::getLastLogTerm() {
+    if (m_logs.empty()) {
+        return m_lastSnapshotIncludeTerm;
+    }
+    return m_logs.back().logterm();
+}
+
+void Raft::getLastLogIndexAndTerm(int* lastLogIndex, int* lastLogTerm) {
+    if (lastLogIndex) {
+        *lastLogIndex = getLastLogIndex();
+    }
+    if (lastLogTerm) {
+        *lastLogTerm = getLastLogTerm();
+    }
+}
+
+int Raft::getSlicesIndexFromLogIndex(int logIndex) {
+    // 将全局日志索引转换为 m_logs 中的下标（考虑快照截断）
+    if (logIndex <= m_lastSnapshotIncludeIndex) {
+        return -1;
+    }
+    return logIndex - m_lastSnapshotIncludeIndex - 1; // 例如：快照到 5，日志 6 对应下标 0
+}
+
+bool Raft::UPtodata(int index, int term) {
+    // 判断候选者日志是否至少和当前节点一样新（Raft 选举规则）
+    int selfLastIndex = getLastLogIndex();
+    int selfLastTerm  = getLastLogTerm();
+
+    if (term != selfLastTerm) {
+        return term > selfLastTerm;
+    }
+    return index >= selfLastIndex;
+}
+
+void Raft::getPrevLogInfo(int server, int* preindex, int* preterm) {
+    // 调用方在持有 m_mtx 的前提下调用本函数
+    int nextIdx = m_nextIndex[server];
+    int prevIdx = nextIdx - 1;
+    if (preindex) {
+        *preindex = prevIdx;
+    }
+    if (preterm) {
+        *preterm = getLogTermFromLogIndex(prevIdx);
+    }
+}
+
+bool Raft::matchLog(int logIndex, int logTerm) {
+    // 与快照点匹配
+    if (logIndex == m_lastSnapshotIncludeIndex) {
+        return logTerm == m_lastSnapshotIncludeTerm;
+    }
+    // 早于快照或超出当前日志范围，一定不匹配
+    if (logIndex < m_lastSnapshotIncludeIndex || logIndex > getLastLogIndex()) {
+        return false;
+    }
+    int sliceIdx = getSlicesIndexFromLogIndex(logIndex);
+    if (sliceIdx < 0 || sliceIdx >= static_cast<int>(m_logs.size())) {
+        return false;
+    }
+    return m_logs[sliceIdx].logterm() == logTerm;
+}
+
+int Raft::GetRaftStateSize() {
+    // 直接委托给 Persister 统计当前 RaftState 的大小
+    return static_cast<int>(m_persister->RaftStateSize());
+}
+
+void Raft::leaderUpdateCommitIndex() {
+    // 只有 Leader 会调用本函数，调用方应在持有 m_mtx 的前提下调用
+    int lastIndex = getLastLogIndex();
+    for (int N = lastIndex; N > m_commitIndex; --N) {
+        int count = 1; // Leader 自己
+        for (int i = 0; i < static_cast<int>(m_peers.size()); ++i) {
+            if (i == m_me) continue;
+            if (m_matchIndex[i] >= N) {
+                ++count;
+            }
+        }
+        if (count >= static_cast<int>(m_peers.size()) / 2 + 1) {
+            // 只提交当前任期的日志，保证 Raft 安全性
+            if (getLogTermFromLogIndex(N) == m_currentTerm) {
+                m_commitIndex = N;
+            }
+            break;
+        }
+    }
+}
+
+void Raft::pushMsgToKVserver(ApplyMsg msg) {
+    if (applyChan) {
+        applyChan->push(msg);
+    }
+}
+
 void Raft::init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::shared_ptr<Persister> persist,
                 std::shared_ptr<LockQueue<ApplyMsg>> applyCh) {
     m_peers = peers;  // 与其他结点沟通的rpc接口
@@ -132,7 +242,7 @@ void Raft::electionTimeoutTicker(){
         //如果不睡的话，那么对于Leader来说这个函数会一直空转，浪费CPU 且加入协程后，空转会导致其他协程无法运行
         while(m_status==Leader){
             //所以要让其睡hearBeat的时间，以为内hearbearBeat必选举超时一般小一个量级
-            usleep(HeartBeatTimeout);
+            usleep(1000*HeartBeatTimeout);
         }
         std::chrono::duration<signed long int,std::ratio<1,1000000000>>suitableSleepTime{};//初始化一个纳秒级别的时间间隔对象
         std::chrono::system_clock::time_point weakTime{};//记录时间节点
@@ -150,10 +260,11 @@ void Raft::electionTimeoutTicker(){
             auto end=std::chrono::steady_clock::now();
             //计算时间差并输出结果（单位为毫秒）
             std::chrono::duration<double,std::milli>duration=end-start;
-            //使用ANSI控制序列将输出颜色修改为紫色
+            auto sleepMs = std::chrono::duration_cast<std::chrono::milliseconds>(suitableSleepTime).count();
             std::cout << "\033[1;35m electionTimeoutTicker();函数设置睡眠时间为："
-                      <<std::chrono::duration_cast<std::chrono::microseconds>(suitableSleepTime).count()<<"毫秒\033[0m"
-                      << std::endl;
+          << sleepMs << "毫秒\033[0m" << std::endl;
+            //使用ANSI控制序列将输出颜色修改为紫色
+
             std::cout << "\033[1;35m electionTimeoutTicker();函数的实际睡眠时间为]"<<duration.count()<<"毫秒\033[0m"
                        << std::endl;
         }

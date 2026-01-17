@@ -14,6 +14,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/myRPC/Server/KrpcController.cc" "CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcController.cc.o" "gcc" "CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcController.cc.o.d"
   "/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/myRPC/Server/KrpcLogger.cc" "CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcLogger.cc.o" "gcc" "CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcLogger.cc.o.d"
   "/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/myRPC/Server/Krpcapplication.cc" "CMakeFiles/myrpc_core.dir/myRPC/Server/Krpcapplication.cc.o" "gcc" "CMakeFiles/myrpc_core.dir/myRPC/Server/Krpcapplication.cc.o.d"
+  "/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/myRPC/User/KrpcChannel.cc" "CMakeFiles/myrpc_core.dir/myRPC/User/KrpcChannel.cc.o" "gcc" "CMakeFiles/myrpc_core.dir/myRPC/User/KrpcChannel.cc.o.d"
   "/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/myRPC/ZooKeeper/ZooKeeper.cc" "CMakeFiles/myrpc_core.dir/myRPC/ZooKeeper/ZooKeeper.cc.o" "gcc" "CMakeFiles/myrpc_core.dir/myRPC/ZooKeeper/ZooKeeper.cc.o.d"
   )
 

@@ -1,1 +1,1 @@
-/usr/bin/c++ CMakeFiles/kvclient.dir/ClientMain.cpp.o CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.o -o kvclient  libkvcore.a libmyrpc_core.a /usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.74.0 /usr/lib/x86_64-linux-gnu/libprotobuf.so -lglog -lzookeeper_mt -lpthread 
+/usr/bin/c++ CMakeFiles/kvclient.dir/ClientMain.cpp.o -o kvclient  libkvcore.a libmyrpc_core.a /usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.74.0 /usr/lib/x86_64-linux-gnu/libprotobuf.so -lglog -lzookeeper_mt -lpthread 

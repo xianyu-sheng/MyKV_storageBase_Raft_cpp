@@ -522,7 +522,7 @@ myRPC/User/KrpcChannel.o: myRPC/User/KrpcChannel.cc.o
 
 # target to build an object file
 myRPC/User/KrpcChannel.cc.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/User/KrpcChannel.cc.o
 .PHONY : myRPC/User/KrpcChannel.cc.o
 
 myRPC/User/KrpcChannel.i: myRPC/User/KrpcChannel.cc.i
@@ -530,7 +530,7 @@ myRPC/User/KrpcChannel.i: myRPC/User/KrpcChannel.cc.i
 
 # target to preprocess a source file
 myRPC/User/KrpcChannel.cc.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/User/KrpcChannel.cc.i
 .PHONY : myRPC/User/KrpcChannel.cc.i
 
 myRPC/User/KrpcChannel.s: myRPC/User/KrpcChannel.cc.s
@@ -538,7 +538,7 @@ myRPC/User/KrpcChannel.s: myRPC/User/KrpcChannel.cc.s
 
 # target to generate assembly for a file
 myRPC/User/KrpcChannel.cc.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/User/KrpcChannel.cc.s
 .PHONY : myRPC/User/KrpcChannel.cc.s
 
 myRPC/ZooKeeper/ZooKeeper.o: myRPC/ZooKeeper/ZooKeeper.cc.o

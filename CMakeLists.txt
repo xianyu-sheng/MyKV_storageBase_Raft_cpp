@@ -12,6 +12,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Protobuf REQUIRED)
 message(STATUS "Found Protobuf: ${Protobuf_LIBRARIES}")
 
+# Boost.Serialization（用于 Raft 状态的 Boost 序列化）
+find_package(Boost REQUIRED COMPONENTS serialization)
+message(STATUS "Found Boost.Serialization: ${Boost_LIBRARIES}")
+
 # 头文件搜索路径
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -52,20 +56,78 @@ add_library(kvcore STATIC
     ${PROTO_SRC}
 )
 
+# kvcore 依赖 Protobuf / pthread / Boost.Serialization。
+# 使用 PUBLIC，后续链接 kvcore 的可执行程序会自动继承这些库。
 target_link_libraries(kvcore
-    PRIVATE
+    PUBLIC
         ${Protobuf_LIBRARIES}
         pthread
+        ${Boost_LIBRARIES}
+)
+
+# === 集成自研 myRPC 框架的核心库和 Provider ===
+set(MYRPC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/myRPC")
+
+# myrpc_core：配置、控制器、日志、应用上下文、ZooKeeper、以及 RPC 头部/用户的 Protobuf 代码
+add_library(myrpc_core STATIC
+    ${MYRPC_DIR}/Server/KrpcConfig.cc
+    ${MYRPC_DIR}/Server/KrpcController.cc
+    ${MYRPC_DIR}/Server/KrpcLogger.cc
+    ${MYRPC_DIR}/Server/Krpcapplication.cc
+    ${MYRPC_DIR}/ZooKeeper/ZooKeeper.cc
+    "${MYRPC_DIR}/ProtoBuf protocol/user/user.pb.cc"
+    "${MYRPC_DIR}/ProtoBuf protocol/RpcHeader/Krpcheader.pb.cc"
+    ${MYRPC_DIR}/User/KrpcChannel.cc
+)
+
+target_include_directories(myrpc_core
+    PUBLIC
+        ${MYRPC_DIR}/Server
+        ${MYRPC_DIR}/User
+        ${MYRPC_DIR}/ZooKeeper
+        "${MYRPC_DIR}/ProtoBuf protocol"
+        "${MYRPC_DIR}/ProtoBuf protocol/RpcHeader"
+        "${MYRPC_DIR}/ProtoBuf protocol/user"
+)
+
+target_link_libraries(myrpc_core
+    PUBLIC
+        ${Protobuf_LIBRARIES}
+        glog
+        zookeeper_mt
+        pthread
+)
+
+# myrpc_provider：KrpcProvider（基于 muduo 的 RPC 服务端）
+add_library(myrpc_provider STATIC
+    ${MYRPC_DIR}/Server/Krpcprovider.cc
+)
+
+target_link_libraries(myrpc_provider
+    PUBLIC
+        myrpc_core
+        muduo_net
+        muduo_base
 )
 
 # 目前项目中唯一的 main 在 Skiplist-CPP/main.cpp（这是 Skiplist demo），
 # 真正的分布式 KV/Raft 服务和 Clerk 还没有单独的 main 文件。
 # 如果你后面为服务端/客户端写了 main，例如 ServerMain.cpp / ClientMain.cpp，
 # 可以在下面按需添加：
-#
-# add_executable(kvserver ServerMain.cpp)
-# target_link_libraries(kvserver PRIVATE kvcore)
-#
-# add_executable(kvclient ClientMain.cpp)
-# target_link_libraries(kvclient PRIVATE kvcore)
 
+add_executable(kvserver ServerMain.cpp)
+target_link_libraries(kvserver
+    PRIVATE
+        kvcore
+        myrpc_core
+        myrpc_provider
+)
+
+add_executable(kvclient
+    ClientMain.cpp
+)
+target_link_libraries(kvclient
+    PRIVATE
+        kvcore
+        myrpc_core
+)
