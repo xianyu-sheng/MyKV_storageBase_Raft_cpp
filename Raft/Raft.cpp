@@ -281,42 +281,73 @@ void Raft::electionTimeoutTicker(){
 //预选举阶段：不增加任期，只测试其他节点是否能够接收心跳
 //在预选举阶段，节点会发送预投票请求，如果大多数节点响应，则进行正式选举
 //预选举的主要优势是避免了因网络分区导致的任期不一致问题，提高了系统的稳定性和一致性
-void Raft::doElection(){
-    //后续增加预选举
-    std::lock_guard<std::mutex>g(m_mtx);
-    if(m_status==Leader){
-        //什么不干
-        return;
-    }
-    if(m_status!=Leader){
-        DPrintf("[ticker-fun-rf(%d)]选举定时器到期且不是Leader，开始选举",m_me);
-        //当选举的时候定时器超时就必须重新选举，否则会因没有选票被卡死
-        //重新选举又超时的话，term会增加
-        m_status=Candidate;//身份设置为候选者2
-        m_currentTerm+=1;//无论是刚开始竞选或者因为超时重新竞选，都会增加term的值
-        m_votedFor=m_me;//把自己的的票先投给自己
-        persist();//对以上数据进行持久化
-        std::shared_ptr<int>votedNum=std::make_shared<int>(1);//记录获得的票数 是不是是大多数的票数 使用make_ptr的好处是避免了内存分配失败，将构建对象和内存分配一起进行
-        //重新设置定时器，防止触发选举
-        m_lastResetElectionTime=now();
-        //设置请求参数和响应参数创建工作线程调用sendrequestVote发送给其他的raft节点
-        //请求投票哦
-        for(int i=0;i<m_peers.size();i++){
-            if(i==m_me){
-                continue;
-            } 
-            int lastLogIndex=-1,lastLogTerm=-1;
-            getLastLogIndexAndTerm(&lastLogIndex,&lastLogTerm);//获取最后一个log和term的下标。以添加到RPC的发送
-            std::shared_ptr<raftRpcProtoc::RequestVoteArgs>requestVoteArgs=std::make_shared<raftRpcProtoc::RequestVoteArgs>();
-            requestVoteArgs->set_term(m_currentTerm);
-            requestVoteArgs->set_candidateid(m_me);
-            requestVoteArgs->set_lastlogindex(lastLogIndex);
-            requestVoteArgs->set_lastlogterm(lastLogTerm);
-            auto requestVoteReply=std::make_shared<raftRpcProtoc::RequestVoteReply>();
-            //创建新线程执行sendRequestVote函数
-            std::thread t(&Raft::sendRequestVote,this,i,requestVoteArgs,requestVoteReply,votedNum);
-            t.detach(); 
+
+void Raft::doElection() {
+    // 1. 定义局部变量，用于存储从锁内拿出来的状态快照
+    std::shared_ptr<int> votedNum;
+    int currentTermSnapshot = 0;
+    int lastLogIndexSnapshot = -1;
+    int lastLogTermSnapshot = -1;
+
+    // --- 临界区开始 (只做内存操作，极快) ---
+    {
+        std::lock_guard<std::mutex> g(m_mtx);
+        
+        // 如果已经是 Leader，直接返回
+        if (m_status == Leader) {
+            return;
         }
+
+        DPrintf("[ticker-fun-rf(%d)]选举定时器到期且不是Leader，开始选举", m_me);
+
+        // 状态变更
+        m_status = Candidate;
+        m_currentTerm += 1;
+        m_votedFor = m_me; // 给自己投票
+        
+        // 持久化状态 (I/O操作，但通常必须在锁内保证一致性，除非优化了 persist)
+        persist();
+
+        // 初始化票数计数器 (原子计数或通过锁保护，这里用 shared_ptr 传递给回调)
+        votedNum = std::make_shared<int>(1);
+
+        // 重置选举定时器
+        m_lastResetElectionTime = now();
+
+        // 【关键步骤】：获取当前 Log 的快照信息
+        // 必须在锁内调用，因为访问 m_logs 需要线程安全
+        getLastLogIndexAndTerm(&lastLogIndexSnapshot, &lastLogTermSnapshot);
+        
+        // 记录当前的 Term，供循环中使用
+        currentTermSnapshot = m_currentTerm;
+
+    } 
+    // --- 临界区结束，锁自动释放 ---
+    // 此时其他线程（如心跳处理、客户端请求）可以获取锁了
+
+
+    // --- 网络 I/O 区 (无锁，耗时) ---
+    // 使用刚才获取的 snapshot 变量来构建 RPC
+    for (int i = 0; i < m_peers.size(); i++) {
+        if (i == m_me) {
+            continue;
+        }
+
+        // 构建请求参数 (使用局部变量 snapshot，而不是成员变量 m_xxx)
+        std::shared_ptr<raftRpcProtoc::RequestVoteArgs> requestVoteArgs = std::make_shared<raftRpcProtoc::RequestVoteArgs>();
+        
+        // 注意：这里必须用 currentTermSnapshot，不能用 m_currentTerm (因为它可能已经被其他线程改了)
+        requestVoteArgs->set_term(currentTermSnapshot);
+        requestVoteArgs->set_candidateid(m_me);
+        requestVoteArgs->set_lastlogindex(lastLogIndexSnapshot);
+        requestVoteArgs->set_lastlogterm(lastLogTermSnapshot);
+
+        auto requestVoteReply = std::make_shared<raftRpcProtoc::RequestVoteReply>();
+
+        // 发送 RPC (此时不持有锁，不会阻塞 Raft 主逻辑)
+        // sendRequestVote 内部通常会开启新线程或使用异步 IO，
+        // 记得在 sendRequestVote 的回调里处理返回值时，需要再次加锁！
+        sendRequestVote(i, requestVoteArgs, requestVoteReply, votedNum);
     }
 }
 
@@ -370,8 +401,6 @@ bool Raft::sendRequestVote(int server,
             m_nextIndex[i]=lastLogIndex+1;//有效下标从1开始
             m_matchIndex[i]=0;//表示已经接受到领导日志的index下标，并且换一次领导就要设置为0
         }
-        std::thread t(&Raft::doHeartBeat,this);//马上宣告自己是Leader进行心跳或日志复制
-        t.detach();
         persist();
     }
     return true;
@@ -491,7 +520,10 @@ void Raft::leaderHearBeatTicker(){
         {
             std::lock_guard<std::mutex>lg(m_mtx);
             weakTime=now();
-            suitableSleepTime=std::chrono::milliseconds(HeartBeatTimeout)+m_lastResetElectionTime-weakTime;
+            // 注意：这里必须基于上一次“心跳重置时间”（m_lastResetHearBeatTime）来计算下一次心跳的睡眠时长，
+            // 不能继续用 m_lastResetElectionTime，否则随着时间推移 suitableSleepTime 会变成负数，
+            // 导致 leaderHearBeatTicker 不再睡眠、疯狂触发 doHeartBeat，最终创建海量线程耗尽系统资源。
+            suitableSleepTime=std::chrono::milliseconds(HeartBeatTimeout)+m_lastResetHearBeatTime-weakTime;
         }
         if(std::chrono::duration<double,std::milli>(suitableSleepTime).count()>1){
             //说明此时还没到发心跳的时间 继续睡眠
@@ -500,7 +532,8 @@ void Raft::leaderHearBeatTicker(){
                                     <<std::endl;
             //获取当前时间点
             auto start=std::chrono::steady_clock::now();
-            usleep(std::chrono::duration_cast<std::chrono::milliseconds>(suitableSleepTime).count());
+            auto sleepUs = std::chrono::duration_cast<std::chrono::microseconds>(suitableSleepTime).count();
+            usleep(static_cast<useconds_t>(sleepUs));
             auto end=std::chrono::steady_clock::now();
             //计算时间差值单位是毫秒
             std::chrono::duration<double,std::milli>duration=end-start;
@@ -512,7 +545,7 @@ void Raft::leaderHearBeatTicker(){
         if(std::chrono::duration<double,std::milli>(m_lastResetHearBeatTime-weakTime).count()>0){
             continue;//睡眠这段时间有重置心跳计时器，不触发心跳
         }
-        doHeartBeat();//执行实际的心跳发送操作
+        doHeartBeat();  // <<< 这里真正发心跳/AppendEntries
     }
 }
 
@@ -864,7 +897,48 @@ void Raft::tryUpdateCommitIndex(std::shared_ptr<raftRpcProtoc::AppendEntriesArgs
 }
 
 //AppendEntreis函数
+//installsnapshot1函数
+void Raft::InstallSnapshot1(const raftRpcProtoc::InstallSnapshotRequest* request,
+                            raftRpcProtoc::InstallSnapshotResponse* response){
+    std::lock_guard<std::mutex> lg(m_mtx);
+    //1.任期处理  和其他RPC一样
+    if(request->term() < m_currentTerm){
+        //对方任期落后，直接拒绝，带上自己的term
+        response->set_term(m_currentTerm);
+        return;
+    }
+    if(request->term() > m_currentTerm){
+        //更新状态 以及 自己的投票等等
+        m_status=Follower;
+        m_currentTerm=request->term();
+        m_votedFor=-1;
+        persist();
+    }
+    //2.更新快照元信息（包含最后的Index以及Term等）
+    int snapIndex=request->lastsnapshotincludeindex();
+    int snapTerm=request->lastsnapshotincludeterm();
+    
+    //如果这是一个更靠后的快照 才更新本地
+    if(snapIndex >m_lastSnapshotIncludeIndex){
+        m_lastSnapshotIncludeIndex=snapIndex;
+        m_lastSnapshotIncludeTerm=snapTerm;
 
+        //提交/已应用至少到快照点
+        if(m_commitIndex < m_lastSnapshotIncludeIndex){
+            m_commitIndex=m_lastSnapshotIncludeIndex;
+        }
+        if(m_lastApplied < m_lastSnapshotIncludeIndex){
+            m_lastApplied=m_lastSnapshotIncludeIndex;
+        }
+        // TODO：后续可以在这里根据 snapIndex 截断 m_logs，
+        // 保证快照前的日志不再保留（现在先不动，等验证完多节点再精细优化）
+    }
+    std::string raftState=persistDate();
+    long long seq=m_persister->Save(raftState,request->snapshotdata());
+    m_persister->WaitFlushed(seq);
+    //4.返回当前的term
+    response->set_term(m_currentTerm);
+}
 //函数理解链接  ：： https://www.doubao.com/thread/w4d7fb3d8d0c6b440
 void Raft::AppendEntries1(const raftRpcProtoc::AppendEntriesArgs* args,
                           raftRpcProtoc::AppendEntriesReply* reply) {
