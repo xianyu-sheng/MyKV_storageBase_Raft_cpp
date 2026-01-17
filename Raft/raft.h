@@ -444,5 +444,20 @@ private:
                                 std::shared_ptr<int> appendNums);
         void tryUpdateCommitIndex(std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
                                 std::shared_ptr<int> appendNums);
+        // === 实现 raftRpcProtoc::raftRpc 的 RPC 接口 ===
+        void AppendEntries(::google::protobuf::RpcController* controller,
+                          const raftRpcProtoc::AppendEntriesArgs* request,
+                          raftRpcProtoc::AppendEntriesReply* response,
+                          ::google::protobuf::Closure* done) override;
+
+        void RequestVote(::google::protobuf::RpcController* controller,
+                        const raftRpcProtoc::RequestVoteArgs* request,
+                        raftRpcProtoc::RequestVoteReply* response,
+                        ::google::protobuf::Closure* done) override;
+
+        void InstallSnapshot(::google::protobuf::RpcController* controller,
+                            const raftRpcProtoc::InstallSnapshotRequest* request,
+                            raftRpcProtoc::InstallSnapshotResponse* response,
+                            ::google::protobuf::Closure* done) override;
 };
 #endif

@@ -443,6 +443,37 @@ void Raft::RequestVote1(const raftRpcProtoc::RequestVoteArgs* args, raftRpcProto
     DPrintf("[RequestVote1] rf{%d} 同意投票给候选者{%d}，term{%d}", m_me, args->candidateid(), m_currentTerm);
     return;
 }
+//=====raftRpcProtoc::raftRpc rpc接口的具体实现
+void Raft::AppendEntries(::google::protobuf::RpcController* controller,
+                         const raftRpcProtoc::AppendEntriesArgs* request,
+                         raftRpcProtoc::AppendEntriesReply* response,
+                         ::google::protobuf::Closure* done) {
+    (void)controller;  // 当前不使用 controller
+    AppendEntries1(request, response);
+    if (done) {
+        done->Run();
+    }
+}
+void Raft::RequestVote(::google::protobuf::RpcController* controller,
+                       const raftRpcProtoc::RequestVoteArgs* request,
+                       raftRpcProtoc::RequestVoteReply* response,
+                       ::google::protobuf::Closure* done) {
+    (void)controller;
+    RequestVote1(request, response);
+    if (done) {
+        done->Run();
+    }
+}
+void Raft::InstallSnapshot(::google::protobuf::RpcController* controller,
+                           const raftRpcProtoc::InstallSnapshotRequest* request,
+                           raftRpcProtoc::InstallSnapshotResponse* response,
+                           ::google::protobuf::Closure* done) {
+    (void)controller;
+    InstallSnapshot1(request, response);
+    if (done) {
+        done->Run();
+    }
+}
 
 //日志复制与心跳机制
 //负责查看是否该发送该心跳，如果该发起就执行doHearBeat  ---- 其实就是检验是不是到时间了
