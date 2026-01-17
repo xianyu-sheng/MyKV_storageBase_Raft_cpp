@@ -824,7 +824,15 @@ void Raft::AppendEntries1(const raftRpcProtoc::AppendEntriesArgs* args,
         return;
     }
 }
-
+struct BoostPersistLogEntry{
+        int term=0;
+        std::string command;
+        template <class Archive>
+        void serialize(Archive& ar,const unsigned int/*version*/){
+            ar & term;
+            ar & command;
+        }
+};
 //持久化函数
 //这里卡哥写的不清楚 我们后续需要进一步的重构
 struct BoostPersistRaftNode {
@@ -832,7 +840,7 @@ struct BoostPersistRaftNode {
     int m_votedFor = -1;
     int m_lastSnapshotIncludeIndex = 0;
     int m_lastSnapshotIncludeTerm = 0;
-    std::vector<std::string> m_logs;
+    std::vector<BoostPersistLogEntry> m_logs;
 
     template <class Archive>
     void serialize(Archive& ar, const unsigned int /*version*/) {
@@ -852,7 +860,10 @@ std::string Raft::persistDate() {
     persistData.m_lastSnapshotIncludeTerm = m_lastSnapshotIncludeTerm;
     persistData.m_logs.clear();
     for (const auto& log : m_logs) {
-        persistData.m_logs.push_back(log.command());
+        BoostPersistLogEntry e;
+        e.term=log.logterm();
+        e.command=log.command();
+        persistData.m_logs.push_back(e);
     }
 
     std::stringstream ss;
@@ -877,37 +888,20 @@ void Raft::readPersist(std::string data) {
 
     m_logs.clear();
     int index = m_lastSnapshotIncludeIndex;
-    for (const auto& cmd : persistData.m_logs) {
+    for (const auto& plog : persistData.m_logs) {
         ++index;
         raftRpcProtoc::LogEntry entry;
         entry.set_logindex(index);
-        entry.set_logterm(m_currentTerm);
-        entry.set_command(cmd);
+        entry.set_logterm(plog.term);//使用持久化记录的term
+        entry.set_command(plog.command);//使用持久化记录的command
         m_logs.push_back(entry);
     }
 }
 
 void Raft::persist() {
-    // 1. 准备需要持久化的数据结构
-    BoostPersistRaftNode persistData;
-    persistData.m_currentTerm = m_currentTerm;
-    persistData.m_votedFor = m_votedFor;
-    persistData.m_lastSnapshotIncludeIndex = m_lastSnapshotIncludeIndex;
-    persistData.m_lastSnapshotIncludeTerm = m_lastSnapshotIncludeTerm;
-
-    // 2. 序列化日志条目（仅保存日志中的命令，避免重复存储索引和任期，因为索引和任期可通过逻辑计算恢复）
-    persistData.m_logs.clear();
-    for (const auto& log : m_logs) {
-        persistData.m_logs.push_back(log.command()); // 假设 LogEntry 的 command 是需要持久化的核心数据
-    }
-
-    // 3. 使用 Boost 序列化将数据转换为字符串
-    std::stringstream ss;
-    boost::archive::text_oarchive oa(ss);
-    oa << persistData; // 序列化到字符串流
-
-    // 4. 调用 Persister 保存序列化后的数据
-    m_persister->SaveRaftState(ss.str());
+   std::string data = persistDate();
+    long long seq = m_persister->SaveRaftState(data);
+    m_persister->WaitFlushed(seq);
 }
 
 

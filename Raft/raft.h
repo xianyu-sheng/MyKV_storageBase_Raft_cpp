@@ -46,33 +46,35 @@ private:
           ::close(fd);
           return false;
         }
-        out->assign(static_cast<size_t>(st.st_size(),'\0'));
+        out->assign(static_cast<size_t>(st.st_size), '\0');
         size_t off=0;
         while(off<out->size()){
           ssize_t n=::read(fd,&(*out)[off],out->size()-off);
           if(n<=0) break;
-          off+=static_cast<ssize_t>(n);
+          off += static_cast<size_t>(n);
         }
         ::close(fd);
         return true;
     }
-    static bool WriteFileAtomic(const std::string& path,const std::string& data){
-      std::string tmp=path+".tmp";
-      //O_DSYNC 类似fsync 但在write的时候就尝试落盘，或者在close前fsync
-      //这里依然手动fsync确保安全
-      if(fd<0)  return false;
+    static bool WriteFileAtomic(const std::string& path, const std::string& data) {
+      std::string tmp = path + ".tmp";
 
-      size_t off==0;
-      while(off<data.size()){
-        ssize_t n=::write(fd,data.data()+off,data.size()-off);
-        if(n<=0)  break;
-        off+=static_cast<size_t>(n);
+      int fd = ::open(tmp.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if (fd < 0) return false;
+
+      size_t off = 0;
+      while (off < data.size()) {
+          ssize_t n = ::write(fd, data.data() + off, data.size() - off);
+          if (n <= 0) { ::close(fd); return false; }
+          off += static_cast<size_t>(n);
       }
-      ::fsync(fd);//刷盘，最耗时的操作
+
+      ::fsync(fd);
       ::close(fd);
-      if(::rename(tmp.c_str(),path.c_str())!=0) return false;
+
+      if (::rename(tmp.c_str(), path.c_str()) != 0) return false;
       return true;
-    }
+  }
     private:
       //内存状态 供读取使用
       std::mutex m_mtx;
@@ -92,9 +94,15 @@ private:
       std::atomic<bool> m_stop;//停止标志
       std::thread m_ioThread;//后台IO线程
 
+      //序号
+      long long m_nextSeq;//下一个分配的序号
+      long long m_flushedSeq;//已经刷盘完成的最大序号
+      long long m_pendingSeq;//当前这批待写数据的序号
+      std::condition_variable m_flushCv;//用来环形等待刷盘完成的信号量
+
       //路径配置
       std::string m_dir;
-      std::string m_raftPathl
+      std::string m_raftPath;
       std::string m_snapshotPath;
 
       //后台线程工作循环
@@ -104,6 +112,7 @@ private:
             std::string snapshotToWrite;
             bool writeState=false;
             bool writeSnap=false;
+            long long seqToWrite=0;//这次写的对应序号
             {
                 //1.等待任务
                 std::unique_lock<std::mutex> lock((m_ioMtx));
@@ -121,7 +130,7 @@ private:
                 //如果我们先保存少量数据 那么我们系统突然宕机 那么就会缺失大量的数据
                 if(m_hasPendingSnapshot){
                   //如果是有新的快照了
-                  snapshotTowrite=std::move(m_pendingSnapshot);
+                  snapshotToWrite=std::move(m_pendingSnapshot);
                   writeSnap=true;
                   m_hasPendingSnapshot=false;//标记已经处理完毕
                 }
@@ -130,6 +139,9 @@ private:
                   writeState=true;
                   m_hasPendingRaft=false;//不来就处理完毕
               }
+                if(writeSnap || writeState){
+                  seqToWrite=m_pendingSeq;
+                }
             }//锁在这里释放 后续的IO操作不占用锁
               //3.执行耗时IO
               if(writeSnap){
@@ -138,19 +150,27 @@ private:
               if(writeState){
                 WriteFileAtomic(m_raftPath,stateToWrite);
               }
+              if(seqToWrite>0){
+                std::lock_guard<std::mutex> lk(m_ioMtx);
+                if(seqToWrite>m_flushedSeq){
+                  m_flushedSeq=seqToWrite;
+                }
+                m_flushCv.notify_all();
+              }
           }
       }
-      explicit Persister(int me) : m_hasPendingRaft(false), m_hasPendingSnapshot(false), m_stop(false){
+    public:
+      explicit Persister(int me) : m_hasPendingRaft(false), m_hasPendingSnapshot(false), m_stop(false),m_nextSeq(0),m_flushedSeq(0),m_pendingSeq(0){
           m_dir="./raft_persist";
           EnsureDir(m_dir);
 
-          m_raftPath=m_dir+"raft_state_"+std::to_string(me);
+          m_raftPath=m_dir+"/raft_state_"+std::to_string(me);
           m_snapshotPath=m_dir+"/snapshot_"+std::to_string(me);
           //初始加载
           ReadFile(m_raftPath,&m_raftState);
           ReadFile(m_snapshotPath,&m_snapshot);
           //启动后台线程
-          m_ioThread=std::thread(&Persister::WrokLoop,this);
+          m_ioThread=std::thread(&Persister::WorkLoop,this);
       }
       ~Persister(){
           {
@@ -163,7 +183,7 @@ private:
           }
       }
       //优化后的Save：非阻塞 立即返回
-      void Save(std::string raftstate,std::string snapshot){
+      long long  Save(std::string raftstate,std::string snapshot){
           //先snapshot
           //1.更新内存副本（供read使用）----比如重选Leader节点 这里我们将这个副本在内存中拷贝一份
           //可以加快速速度
@@ -172,32 +192,48 @@ private:
             m_raftState=raftstate;
             m_snapshot=snapshot;
           }
+          long long seq;
           //2.推送任务到后台线程
           {
-            std::lock_guard<std::mutex> lg(m_ioMtx);
-            //直接覆盖Pending数据->自动实现 write Batching
-            //无论上一次Save还没写完  我们只关心最新的数据
+              std::lock_guard<std::mutex> lg(m_ioMtx);
+              //直接覆盖Pending数据->自动实现 write Batching
+              //无论上一次Save还没写完  我们只关心最新的数据
               m_pendingRaftState=std::move(raftstate);
               m_pendingSnapshot=std::move(snapshot);
               m_hasPendingRaft=true;
               m_hasPendingSnapshot=true;
+              ++m_nextSeq;
+              m_pendingSeq=m_nextSeq;
+              seq=m_nextSeq;
           }
           m_cv.notify_one();
+          return seq;
       }
       //优化后的SaveRaftState
-      void SaveRaftState(const std::string& data){
+      long long  SaveRaftState(const std::string& data){
         //更新内存
         {
           std::lock_guard<std::mutex> lg(m_mtx);
           m_raftState=data;
         }
+        long long seq;
         //推送任务
         {
-          std::lock_guard<std::mutex> lg(m_ioMtx);
-          m_pendingRaftState=data;
-          m_hasPendingRaft=true;
+            std::lock_guard<std::mutex> lg(m_ioMtx);
+            m_pendingRaftState=data;
+            m_hasPendingRaft=true;
+            ++m_nextSeq;
+            m_pendingSeq=m_nextSeq;
+            seq=m_nextSeq;
         } 
         m_cv.notify_one();
+        return seq;
+      }
+      void WaitFlushed(long long seq){
+          std::unique_lock<std::mutex> lock(m_ioMtx);
+          m_flushCv.wait(lock,[this,seq]{
+              return m_flushedSeq>=seq;
+          });
       }
       //读取操作保持极快，直接读取内存，不用管IO锁
       std::string ReadSnapshot(){
