@@ -129,6 +129,58 @@ kvcore/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/build
 .PHONY : kvcore/fast
 
+#=============================================================================
+# Target rules for targets named myrpc_core
+
+# Build rule for target.
+myrpc_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 myrpc_core
+.PHONY : myrpc_core
+
+# fast build rule for target.
+myrpc_core/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/build
+.PHONY : myrpc_core/fast
+
+#=============================================================================
+# Target rules for targets named myrpc_provider
+
+# Build rule for target.
+myrpc_provider: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 myrpc_provider
+.PHONY : myrpc_provider
+
+# fast build rule for target.
+myrpc_provider/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_provider.dir/build.make CMakeFiles/myrpc_provider.dir/build
+.PHONY : myrpc_provider/fast
+
+#=============================================================================
+# Target rules for targets named kvserver
+
+# Build rule for target.
+kvserver: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 kvserver
+.PHONY : kvserver
+
+# fast build rule for target.
+kvserver/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvserver.dir/build.make CMakeFiles/kvserver.dir/build
+.PHONY : kvserver/fast
+
+#=============================================================================
+# Target rules for targets named kvclient
+
+# Build rule for target.
+kvclient: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 kvclient
+.PHONY : kvclient
+
+# fast build rule for target.
+kvclient/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/build
+.PHONY : kvclient/fast
+
 Clerk/clerk.o: Clerk/clerk.cpp.o
 .PHONY : Clerk/clerk.o
 
@@ -152,6 +204,30 @@ Clerk/clerk.s: Clerk/clerk.cpp.s
 Clerk/clerk.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/Clerk/clerk.cpp.s
 .PHONY : Clerk/clerk.cpp.s
+
+ClientMain.o: ClientMain.cpp.o
+.PHONY : ClientMain.o
+
+# target to build an object file
+ClientMain.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/ClientMain.cpp.o
+.PHONY : ClientMain.cpp.o
+
+ClientMain.i: ClientMain.cpp.i
+.PHONY : ClientMain.i
+
+# target to preprocess a source file
+ClientMain.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/ClientMain.cpp.i
+.PHONY : ClientMain.cpp.i
+
+ClientMain.s: ClientMain.cpp.s
+.PHONY : ClientMain.s
+
+# target to generate assembly for a file
+ClientMain.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/ClientMain.cpp.s
+.PHONY : ClientMain.cpp.s
 
 KvServer/KvServer.o: KvServer/KvServer.cpp.o
 .PHONY : KvServer/KvServer.o
@@ -249,6 +325,246 @@ Raft/Raft.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/Raft/Raft.cpp.s
 .PHONY : Raft/Raft.cpp.s
 
+ServerMain.o: ServerMain.cpp.o
+.PHONY : ServerMain.o
+
+# target to build an object file
+ServerMain.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvserver.dir/build.make CMakeFiles/kvserver.dir/ServerMain.cpp.o
+.PHONY : ServerMain.cpp.o
+
+ServerMain.i: ServerMain.cpp.i
+.PHONY : ServerMain.i
+
+# target to preprocess a source file
+ServerMain.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvserver.dir/build.make CMakeFiles/kvserver.dir/ServerMain.cpp.i
+.PHONY : ServerMain.cpp.i
+
+ServerMain.s: ServerMain.cpp.s
+.PHONY : ServerMain.s
+
+# target to generate assembly for a file
+ServerMain.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvserver.dir/build.make CMakeFiles/kvserver.dir/ServerMain.cpp.s
+.PHONY : ServerMain.cpp.s
+
+myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.o: myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.o
+.PHONY : myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.o
+
+# target to build an object file
+myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.o
+.PHONY : myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.o
+
+myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.i: myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.i
+.PHONY : myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.i
+
+# target to preprocess a source file
+myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.i
+.PHONY : myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.i
+
+myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.s: myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.s
+.PHONY : myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.s
+
+# target to generate assembly for a file
+myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.s
+.PHONY : myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.cc.s
+
+myRPC/ProtoBuf_protocol/user/user.pb.o: myRPC/ProtoBuf_protocol/user/user.pb.cc.o
+.PHONY : myRPC/ProtoBuf_protocol/user/user.pb.o
+
+# target to build an object file
+myRPC/ProtoBuf_protocol/user/user.pb.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ProtoBuf_protocol/user/user.pb.cc.o
+.PHONY : myRPC/ProtoBuf_protocol/user/user.pb.cc.o
+
+myRPC/ProtoBuf_protocol/user/user.pb.i: myRPC/ProtoBuf_protocol/user/user.pb.cc.i
+.PHONY : myRPC/ProtoBuf_protocol/user/user.pb.i
+
+# target to preprocess a source file
+myRPC/ProtoBuf_protocol/user/user.pb.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ProtoBuf_protocol/user/user.pb.cc.i
+.PHONY : myRPC/ProtoBuf_protocol/user/user.pb.cc.i
+
+myRPC/ProtoBuf_protocol/user/user.pb.s: myRPC/ProtoBuf_protocol/user/user.pb.cc.s
+.PHONY : myRPC/ProtoBuf_protocol/user/user.pb.s
+
+# target to generate assembly for a file
+myRPC/ProtoBuf_protocol/user/user.pb.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ProtoBuf_protocol/user/user.pb.cc.s
+.PHONY : myRPC/ProtoBuf_protocol/user/user.pb.cc.s
+
+myRPC/Server/KrpcConfig.o: myRPC/Server/KrpcConfig.cc.o
+.PHONY : myRPC/Server/KrpcConfig.o
+
+# target to build an object file
+myRPC/Server/KrpcConfig.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcConfig.cc.o
+.PHONY : myRPC/Server/KrpcConfig.cc.o
+
+myRPC/Server/KrpcConfig.i: myRPC/Server/KrpcConfig.cc.i
+.PHONY : myRPC/Server/KrpcConfig.i
+
+# target to preprocess a source file
+myRPC/Server/KrpcConfig.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcConfig.cc.i
+.PHONY : myRPC/Server/KrpcConfig.cc.i
+
+myRPC/Server/KrpcConfig.s: myRPC/Server/KrpcConfig.cc.s
+.PHONY : myRPC/Server/KrpcConfig.s
+
+# target to generate assembly for a file
+myRPC/Server/KrpcConfig.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcConfig.cc.s
+.PHONY : myRPC/Server/KrpcConfig.cc.s
+
+myRPC/Server/KrpcController.o: myRPC/Server/KrpcController.cc.o
+.PHONY : myRPC/Server/KrpcController.o
+
+# target to build an object file
+myRPC/Server/KrpcController.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcController.cc.o
+.PHONY : myRPC/Server/KrpcController.cc.o
+
+myRPC/Server/KrpcController.i: myRPC/Server/KrpcController.cc.i
+.PHONY : myRPC/Server/KrpcController.i
+
+# target to preprocess a source file
+myRPC/Server/KrpcController.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcController.cc.i
+.PHONY : myRPC/Server/KrpcController.cc.i
+
+myRPC/Server/KrpcController.s: myRPC/Server/KrpcController.cc.s
+.PHONY : myRPC/Server/KrpcController.s
+
+# target to generate assembly for a file
+myRPC/Server/KrpcController.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcController.cc.s
+.PHONY : myRPC/Server/KrpcController.cc.s
+
+myRPC/Server/KrpcLogger.o: myRPC/Server/KrpcLogger.cc.o
+.PHONY : myRPC/Server/KrpcLogger.o
+
+# target to build an object file
+myRPC/Server/KrpcLogger.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcLogger.cc.o
+.PHONY : myRPC/Server/KrpcLogger.cc.o
+
+myRPC/Server/KrpcLogger.i: myRPC/Server/KrpcLogger.cc.i
+.PHONY : myRPC/Server/KrpcLogger.i
+
+# target to preprocess a source file
+myRPC/Server/KrpcLogger.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcLogger.cc.i
+.PHONY : myRPC/Server/KrpcLogger.cc.i
+
+myRPC/Server/KrpcLogger.s: myRPC/Server/KrpcLogger.cc.s
+.PHONY : myRPC/Server/KrpcLogger.s
+
+# target to generate assembly for a file
+myRPC/Server/KrpcLogger.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/KrpcLogger.cc.s
+.PHONY : myRPC/Server/KrpcLogger.cc.s
+
+myRPC/Server/Krpcapplication.o: myRPC/Server/Krpcapplication.cc.o
+.PHONY : myRPC/Server/Krpcapplication.o
+
+# target to build an object file
+myRPC/Server/Krpcapplication.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/Krpcapplication.cc.o
+.PHONY : myRPC/Server/Krpcapplication.cc.o
+
+myRPC/Server/Krpcapplication.i: myRPC/Server/Krpcapplication.cc.i
+.PHONY : myRPC/Server/Krpcapplication.i
+
+# target to preprocess a source file
+myRPC/Server/Krpcapplication.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/Krpcapplication.cc.i
+.PHONY : myRPC/Server/Krpcapplication.cc.i
+
+myRPC/Server/Krpcapplication.s: myRPC/Server/Krpcapplication.cc.s
+.PHONY : myRPC/Server/Krpcapplication.s
+
+# target to generate assembly for a file
+myRPC/Server/Krpcapplication.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/Server/Krpcapplication.cc.s
+.PHONY : myRPC/Server/Krpcapplication.cc.s
+
+myRPC/Server/Krpcprovider.o: myRPC/Server/Krpcprovider.cc.o
+.PHONY : myRPC/Server/Krpcprovider.o
+
+# target to build an object file
+myRPC/Server/Krpcprovider.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_provider.dir/build.make CMakeFiles/myrpc_provider.dir/myRPC/Server/Krpcprovider.cc.o
+.PHONY : myRPC/Server/Krpcprovider.cc.o
+
+myRPC/Server/Krpcprovider.i: myRPC/Server/Krpcprovider.cc.i
+.PHONY : myRPC/Server/Krpcprovider.i
+
+# target to preprocess a source file
+myRPC/Server/Krpcprovider.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_provider.dir/build.make CMakeFiles/myrpc_provider.dir/myRPC/Server/Krpcprovider.cc.i
+.PHONY : myRPC/Server/Krpcprovider.cc.i
+
+myRPC/Server/Krpcprovider.s: myRPC/Server/Krpcprovider.cc.s
+.PHONY : myRPC/Server/Krpcprovider.s
+
+# target to generate assembly for a file
+myRPC/Server/Krpcprovider.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_provider.dir/build.make CMakeFiles/myrpc_provider.dir/myRPC/Server/Krpcprovider.cc.s
+.PHONY : myRPC/Server/Krpcprovider.cc.s
+
+myRPC/User/KrpcChannel.o: myRPC/User/KrpcChannel.cc.o
+.PHONY : myRPC/User/KrpcChannel.o
+
+# target to build an object file
+myRPC/User/KrpcChannel.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.o
+.PHONY : myRPC/User/KrpcChannel.cc.o
+
+myRPC/User/KrpcChannel.i: myRPC/User/KrpcChannel.cc.i
+.PHONY : myRPC/User/KrpcChannel.i
+
+# target to preprocess a source file
+myRPC/User/KrpcChannel.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.i
+.PHONY : myRPC/User/KrpcChannel.cc.i
+
+myRPC/User/KrpcChannel.s: myRPC/User/KrpcChannel.cc.s
+.PHONY : myRPC/User/KrpcChannel.s
+
+# target to generate assembly for a file
+myRPC/User/KrpcChannel.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/myRPC/User/KrpcChannel.cc.s
+.PHONY : myRPC/User/KrpcChannel.cc.s
+
+myRPC/ZooKeeper/ZooKeeper.o: myRPC/ZooKeeper/ZooKeeper.cc.o
+.PHONY : myRPC/ZooKeeper/ZooKeeper.o
+
+# target to build an object file
+myRPC/ZooKeeper/ZooKeeper.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ZooKeeper/ZooKeeper.cc.o
+.PHONY : myRPC/ZooKeeper/ZooKeeper.cc.o
+
+myRPC/ZooKeeper/ZooKeeper.i: myRPC/ZooKeeper/ZooKeeper.cc.i
+.PHONY : myRPC/ZooKeeper/ZooKeeper.i
+
+# target to preprocess a source file
+myRPC/ZooKeeper/ZooKeeper.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ZooKeeper/ZooKeeper.cc.i
+.PHONY : myRPC/ZooKeeper/ZooKeeper.cc.i
+
+myRPC/ZooKeeper/ZooKeeper.s: myRPC/ZooKeeper/ZooKeeper.cc.s
+.PHONY : myRPC/ZooKeeper/ZooKeeper.s
+
+# target to generate assembly for a file
+myRPC/ZooKeeper/ZooKeeper.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/myRPC/ZooKeeper/ZooKeeper.cc.s
+.PHONY : myRPC/ZooKeeper/ZooKeeper.cc.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -257,10 +573,17 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... kvclient"
 	@echo "... kvcore"
+	@echo "... kvserver"
+	@echo "... myrpc_core"
+	@echo "... myrpc_provider"
 	@echo "... Clerk/clerk.o"
 	@echo "... Clerk/clerk.i"
 	@echo "... Clerk/clerk.s"
+	@echo "... ClientMain.o"
+	@echo "... ClientMain.i"
+	@echo "... ClientMain.s"
 	@echo "... KvServer/KvServer.o"
 	@echo "... KvServer/KvServer.i"
 	@echo "... KvServer/KvServer.s"
@@ -273,6 +596,36 @@ help:
 	@echo "... Raft/Raft.o"
 	@echo "... Raft/Raft.i"
 	@echo "... Raft/Raft.s"
+	@echo "... ServerMain.o"
+	@echo "... ServerMain.i"
+	@echo "... ServerMain.s"
+	@echo "... myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.o"
+	@echo "... myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.i"
+	@echo "... myRPC/ProtoBuf_protocol/RpcHeader/Krpcheader.pb.s"
+	@echo "... myRPC/ProtoBuf_protocol/user/user.pb.o"
+	@echo "... myRPC/ProtoBuf_protocol/user/user.pb.i"
+	@echo "... myRPC/ProtoBuf_protocol/user/user.pb.s"
+	@echo "... myRPC/Server/KrpcConfig.o"
+	@echo "... myRPC/Server/KrpcConfig.i"
+	@echo "... myRPC/Server/KrpcConfig.s"
+	@echo "... myRPC/Server/KrpcController.o"
+	@echo "... myRPC/Server/KrpcController.i"
+	@echo "... myRPC/Server/KrpcController.s"
+	@echo "... myRPC/Server/KrpcLogger.o"
+	@echo "... myRPC/Server/KrpcLogger.i"
+	@echo "... myRPC/Server/KrpcLogger.s"
+	@echo "... myRPC/Server/Krpcapplication.o"
+	@echo "... myRPC/Server/Krpcapplication.i"
+	@echo "... myRPC/Server/Krpcapplication.s"
+	@echo "... myRPC/Server/Krpcprovider.o"
+	@echo "... myRPC/Server/Krpcprovider.i"
+	@echo "... myRPC/Server/Krpcprovider.s"
+	@echo "... myRPC/User/KrpcChannel.o"
+	@echo "... myRPC/User/KrpcChannel.i"
+	@echo "... myRPC/User/KrpcChannel.s"
+	@echo "... myRPC/ZooKeeper/ZooKeeper.o"
+	@echo "... myRPC/ZooKeeper/ZooKeeper.i"
+	@echo "... myRPC/ZooKeeper/ZooKeeper.s"
 .PHONY : help
 
 

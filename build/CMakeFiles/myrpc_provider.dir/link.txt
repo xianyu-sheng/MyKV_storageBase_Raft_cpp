@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmyrpc_provider.a CMakeFiles/myrpc_provider.dir/myRPC/Server/Krpcprovider.cc.o
+/usr/bin/ranlib libmyrpc_provider.a

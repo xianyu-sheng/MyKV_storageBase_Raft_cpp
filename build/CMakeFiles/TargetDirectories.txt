@@ -1,3 +1,7 @@
 /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles/kvcore.dir
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles/myrpc_core.dir
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles/myrpc_provider.dir
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles/kvserver.dir
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles/kvclient.dir
 /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles/edit_cache.dir
 /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles/rebuild_cache.dir

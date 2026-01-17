@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/kvserver.dir/ServerMain.cpp.o -o kvserver  libkvcore.a libmyrpc_core.a libmyrpc_provider.a /usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.74.0 libmyrpc_core.a /usr/lib/x86_64-linux-gnu/libprotobuf.so -lglog -lzookeeper_mt -lpthread -lmuduo_net -lmuduo_base 

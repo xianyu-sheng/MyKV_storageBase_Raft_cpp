@@ -336,7 +336,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: \
  /usr/include/boost/config/helper_macros.hpp \
  /usr/include/boost/archive/detail/auto_link_archive.hpp \
  /usr/include/boost/archive/detail/decl.hpp \
- /usr/include/boost/config/auto_link.hpp \
  /usr/include/boost/archive/basic_text_oprimitive.hpp \
  /usr/include/c++/11/iomanip /usr/include/c++/11/locale \
  /usr/include/c++/11/bits/locale_facets_nonio.h \

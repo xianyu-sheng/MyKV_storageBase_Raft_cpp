@@ -1871,7 +1871,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
   /usr/include/boost/config/helper_macros.hpp \
   /usr/include/boost/archive/detail/auto_link_archive.hpp \
   /usr/include/boost/archive/detail/decl.hpp \
-  /usr/include/boost/config/auto_link.hpp \
   /usr/include/boost/archive/basic_text_oprimitive.hpp \
   /usr/include/c++/11/iomanip \
   /usr/include/c++/11/locale \
@@ -3316,10 +3315,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/config/detail/suffix.hpp:
 
-/usr/include/boost/smart_ptr/detail/sp_nullptr_t.hpp:
-
-/usr/include/boost/preprocessor/array/elem.hpp:
-
 /usr/include/boost/archive/basic_text_oprimitive.hpp:
 
 /usr/include/boost/preprocessor/control/expr_iif.hpp:
@@ -3552,8 +3547,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/mpl/aux_/nested_type_wknd.hpp:
 
-/usr/include/boost/config/auto_link.hpp:
-
 /usr/include/boost/mpl/integral_c_fwd.hpp:
 
 /usr/include/boost/type_traits/is_arithmetic.hpp:
@@ -3701,6 +3694,10 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/serialization/wrapper.hpp:
 
 /usr/include/boost/mpl/aux_/config/msvc_typename.hpp:
+
+/usr/include/boost/smart_ptr/detail/sp_nullptr_t.hpp:
+
+/usr/include/boost/preprocessor/array/elem.hpp:
 
 /usr/include/boost/mpl/aux_/config/bind.hpp:
 
