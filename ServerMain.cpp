@@ -17,7 +17,8 @@ int main(int argc,char** argv){
         me=std::atoi(env);
     }
     const int kTotalServers = 3;
-    const int kBasePort=8000;
+    // 与 myrpc_0/1/2.conf 中的 rpcserverport 保持一致
+    const int kPeerPorts[kTotalServers] = {8000, 8002, 8003};
     //2.1持久化组件（会自动创建./raft_persist 目录并加载状态）
     auto persister=std::make_shared<Persister>(me);
     //2.2Raft->KvServer的apply通道
@@ -30,7 +31,7 @@ int main(int argc,char** argv){
         }else{
             peers[i]=std::make_shared<KrpcRaftRpcClient>(
                 "127.0.0.1",
-                kBasePort+i
+                static_cast<uint16_t>(kPeerPorts[i])
             );
         }
     }

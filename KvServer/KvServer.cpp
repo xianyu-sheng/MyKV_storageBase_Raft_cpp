@@ -165,6 +165,7 @@ void KvServer::PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,
     m_raftNode->Start(op, &index, &isLeader);
 
     if (!isLeader) {
+        std::cout << "[PutAppend] not leader, reply ErrWrongLeader, index=" << index << std::endl;
         reply->set_err(ErrWrongLeader);
         return;
     }
@@ -181,6 +182,11 @@ void KvServer::PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,
 
     Op raftCommitOp;
     if (!ch->timeOutPop(CONSENSUS_TIMEOUT, &raftCommitOp)) {
+         bool dup = ifRequestDuplicate(op.ClientId, op.RequestId);
+         std::cout << "[PutAppend] timeout, dup=" << dup
+                  << " client=" << op.ClientId
+                  << " req=" << op.RequestId
+                  << " -> err=" << (dup ? "OK" : "ErrWrongLeader") << std::endl;
         // 超时：检查是否是重复请求
         if (ifRequestDuplicate(op.ClientId, op.RequestId)) {
             reply->set_err(OK);
@@ -188,6 +194,8 @@ void KvServer::PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,
             reply->set_err(ErrWrongLeader);
         }
     } else {
+         std::cout << "[PutAppend] committed, client=" << op.ClientId
+                  << " req=" << op.RequestId << " -> OK" << std::endl;
         // 拿到提交的 Op，验证是不是本次请求
         if (raftCommitOp.ClientId == op.ClientId &&
             raftCommitOp.RequestId == op.RequestId) {
@@ -204,6 +212,8 @@ void KvServer::Apply(const ApplyMsg& msg) {
 
     // 去重 + 写入跳表
     if (!ifRequestDuplicate(op.ClientId, op.RequestId)) {
+        std::cout << "[Apply] dup, client=" << op.ClientId
+                  << " req=" << op.RequestId << " -> OK" << std::endl;
         if (op.Operation == "Get") {
             // Get 日志一般不改数据，你可以选择不做任何 KV 更新
             std::string Value;

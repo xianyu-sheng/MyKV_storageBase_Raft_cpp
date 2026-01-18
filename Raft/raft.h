@@ -268,8 +268,7 @@ class KrpcRaftRpcClient : public RaftRpcUtil{
       KrpcRaftRpcClient(const std::string& ip,uint16_t port):m_ip(ip),m_port(port){}
       bool AppendEntries(const raftRpcProtoc::AppendEntriesArgs* args,
                         raftRpcProtoc::AppendEntriesReply* reply) override{
-                            KrpcChannel channel(false);
-                            //TODO:配置Channel连接到m_ip:m_port
+                            KrpcChannel channel(m_ip,m_port);
                             raftRpcProtoc::raftRpc_Stub stub(&channel);
                             KrpcController controller;
                             stub.AppendEntries(&controller,args,reply,nullptr);
@@ -281,8 +280,7 @@ class KrpcRaftRpcClient : public RaftRpcUtil{
                         }
       bool RequestVote(const raftRpcProtoc::RequestVoteArgs* args,
                        raftRpcProtoc::RequestVoteReply* reply) override{
-                            KrpcChannel channel(false);
-                            //TODO:配置Channel连接到m_ip:m_port
+                            KrpcChannel channel(m_ip,m_port);
                             raftRpcProtoc::raftRpc_Stub stub(&channel);
                             KrpcController controller;
                             stub.RequestVote(&controller,args,reply,nullptr);
@@ -294,8 +292,7 @@ class KrpcRaftRpcClient : public RaftRpcUtil{
                         }
       bool InstallSnapshot(const raftRpcProtoc::InstallSnapshotRequest* request,
                           raftRpcProtoc::InstallSnapshotResponse* response) override{
-                            KrpcChannel channel(false);
-                            //TODO:配置Channel连接到m_ip:m_port
+                            KrpcChannel channel(m_ip,m_port);
                             raftRpcProtoc::raftRpc_Stub stub(&channel);
                             KrpcController controller;
                             stub.InstallSnapshot(&controller,request,response,nullptr);
