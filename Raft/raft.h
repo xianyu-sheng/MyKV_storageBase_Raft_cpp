@@ -260,6 +260,8 @@ class RaftRpcUtil {
                              raftRpcProtoc::AppendEntriesReply* reply) = 0;
   virtual bool RequestVote(const raftRpcProtoc::RequestVoteArgs* args,
                            raftRpcProtoc::RequestVoteReply* reply) = 0;
+  virtual bool PreRequestVote(const raftRpcProtoc::PreRequestVoteArgs* args,
+                              raftRpcProtoc::PreRequestVoteReply* reply) = 0;
   virtual bool InstallSnapshot(const raftRpcProtoc::InstallSnapshotRequest* request,
                                raftRpcProtoc::InstallSnapshotResponse* response) = 0;
 };
@@ -278,6 +280,17 @@ class KrpcRaftRpcClient : public RaftRpcUtil{
                             }
                             return true;
                         }
+      bool PreRequestVote(const raftRpcProtoc::PreRequestVoteArgs* args,raftRpcProtoc::PreRequestVoteReply* reply)override{
+        KrpcChannel channel(m_ip,m_port);
+        raftRpcProtoc::raftRpc_Stub stub(&channel);
+        KrpcController controller;
+        stub.PreRequestVote(&controller,args,reply,nullptr);
+        if(controller.Failed()){
+          //网络超市
+            return false;
+        }
+          return true;
+      }
       bool RequestVote(const raftRpcProtoc::RequestVoteArgs* args,
                        raftRpcProtoc::RequestVoteReply* reply) override{
                             KrpcChannel channel(m_ip,m_port);
@@ -404,6 +417,10 @@ private:
         void persist();//持久化当前状态
 
         void RequestVote1(const raftRpcProtoc::RequestVoteArgs* args,raftRpcProtoc::RequestVoteReply* reply);//变成候选者请求其他节点投票
+        // 预选举相关
+        void PreRequestVote1(const raftRpcProtoc::PreRequestVoteArgs* args,
+                             raftRpcProtoc::PreRequestVoteReply* reply);
+        bool preElection(); // 在正式选举前先进行预选举
         bool UPtodata(int index,int term);//判断当前节点是否有最新日志
         int getLastLogIndex();//获取最后一个日志条目索引
         int getLastLogTerm();//获取最后一个日志条目的任期
@@ -456,5 +473,9 @@ private:
                             const raftRpcProtoc::InstallSnapshotRequest* request,
                             raftRpcProtoc::InstallSnapshotResponse* response,
                             ::google::protobuf::Closure* done) override;
+        void PreRequestVote(::google::protobuf::RpcController* controller,
+                    const raftRpcProtoc::PreRequestVoteArgs* request,
+                    raftRpcProtoc::PreRequestVoteReply* response,
+                    ::google::protobuf::Closure* done) override;
 };
 #endif

@@ -272,10 +272,70 @@ void Raft::electionTimeoutTicker(){
             //说明睡眠的这段时间有重置定时器，那么就没有超时 再次睡眠
             continue;
         }
-        doElection();
+        if(preElection()){
+            doElection();
+        }
     }
 }
-
+//预选举
+bool Raft::preElection(){
+    int preVoteTerm=0;
+    int lastLogIndex=-1;
+    int lastLogTerm=-1;
+    {
+        std::lock_guard<std::mutex> lg(m_mtx);
+        if(m_status==Leader){
+            return false;
+        }
+        //预选举阶段不修改m_currentTerm 只是试探性的使用下一任期
+        preVoteTerm=m_currentTerm+1;
+        getLastLogIndexAndTerm(&lastLogIndex,&lastLogTerm);
+    }
+    int votes=1;//自己逻辑上投一篇
+    int totalPeers=static_cast<int>(m_peers.size());
+    //循环的发送预选举投票
+    for(int i=0;i<totalPeers;++i){
+        if(i==m_me){
+            continue;
+        }
+        raftRpcProtoc::PreRequestVoteArgs args;
+        args.set_term(preVoteTerm);
+        args.set_candidateid(m_me);
+        args.set_lastlogindex(lastLogIndex);
+        args.set_lastlogterm(lastLogTerm);
+        raftRpcProtoc::PreRequestVoteReply reply;
+        //然后来送预选举请求
+        bool ok=m_peers[i]->PreRequestVote(&args,&reply);
+        if(!ok){
+            continue;//不管 继续下一个节点
+        }
+        {
+            //如果ok
+            std::lock_guard<std::mutex> lg(m_mtx);
+            //如果在预选举中发现别人的term更大 仍然要退回Follwer
+            if(reply.term()>m_currentTerm){
+                m_status=Follower;
+                m_currentTerm=reply.term();
+                m_votedFor=-1;
+                persist();
+            }
+        }
+        if(reply.votegranted()){
+            ++votes;
+        }
+    }
+    //最后来检查是否满足预选举的要求 如果满足在吊用真正的选举
+    {
+        std::lock_guard<std::mutex> lg(m_mtx);
+        //预选举结束后，无论成功与否，都重置一下定时器，避免CPU空转
+        m_lastResetElectionTime=now();
+        if(m_status==Leader){
+            return false;
+        }
+    }
+    //拿到半数以上的投票 开始正式选举
+    return votes >= totalPeers/2+1;
+}
 //节点选举：这里我想要实现预选举的操作【这里是我自己的创新，用于防止网络分区节点无限制增长任期，提高系统稳定性】
 //预选举将在正式选举前进行，只有在预选举中获得足够多数票时才进行正式选举
 //预选举阶段：不增加任期，只测试其他节点是否能够接收心跳
@@ -1182,5 +1242,42 @@ void Raft::applierTicker(){
         }
         //控制apply频率 避免空缺
         usleep(1000);
+    }
+}
+
+
+//预选举
+void Raft::PreRequestVote1(const raftRpcProtoc::PreRequestVoteArgs* args,raftRpcProtoc::PreRequestVoteReply* reply){
+    std::lock_guard<std::mutex> lg(m_mtx);
+    //默认返回当前节点的term 候选者可以根据此知道自己是否落后
+    reply->set_term(m_currentTerm);
+    //1.候选者的term小于自己-->直接拒绝
+    if(args->term()<m_currentTerm){
+        reply->set_votegranted(false);
+        return;
+    }
+    //2.日志必须至少一样新
+    bool candidateLogUpToDate=UPtodata(args->lastlogindex(),args->lastlogterm());
+    if(!candidateLogUpToDate){
+        reply->set_votegranted(false);
+        return;
+    }
+    //3.如果当前自己就是Leader了 可以拒绝预投票 叫少无畏的扰动
+    if(m_status==Leader){
+        reply->set_votegranted(false);
+        return;
+    }
+    //4.不修改m_curentterm/m_votedFor/m_status 仅表示如果是真选举 我会投n
+    reply->set_votegranted(true);
+}
+//实现RPC包装
+void Raft::PreRequestVote(::google::protobuf::RpcController* controller,
+                          const raftRpcProtoc::PreRequestVoteArgs* request,
+                          raftRpcProtoc::PreRequestVoteReply* response,
+                          ::google::protobuf::Closure* done) {
+    (void)controller;
+    PreRequestVote1(request, response);
+    if (done) {
+        done->Run();
     }
 }

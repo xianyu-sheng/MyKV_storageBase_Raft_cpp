@@ -40,7 +40,16 @@ message RequestVoteReply{
     bool VoteGranted=2;
     int32 VoteState =3;
 }
-
+message PreRequestVoteArgs{
+    int32 Term=1;
+    int32 CandidateId=2;
+    int32 LastLogIndex=3;
+    int32 LastLogTerm=4;
+}
+message PreRequestVoteReply{
+    int32 Term=1;
+    bool VoteGranted=2;
+}
 message InstallSnapshotRequest{
     int32 LeaderId=1;
     int32 Term=2;
@@ -58,5 +67,6 @@ service raftRpc{
     rpc AppendEntries(AppendEntriesArgs) returns (AppendEntriesReply);
     rpc RequestVote(RequestVoteArgs) returns (RequestVoteReply);
     rpc InstallSnapshot(InstallSnapshotRequest) returns (InstallSnapshotResponse);
+    rpc PreRequestVote(PreRequestVoteArgs) returns (PreRequestVoteReply); // 新增预选举 RPC
 }
 
