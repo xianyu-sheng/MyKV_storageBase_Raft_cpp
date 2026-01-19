@@ -267,57 +267,65 @@ class RaftRpcUtil {
 };
 class KrpcRaftRpcClient : public RaftRpcUtil{
     public:
-      KrpcRaftRpcClient(const std::string& ip,uint16_t port):m_ip(ip),m_port(port){}
+      KrpcRaftRpcClient(const std::string& ip,uint16_t port)
+        : m_ip(ip),
+          m_port(port),
+          m_channel(std::make_shared<KrpcChannel>(ip, port, /*keep_alive=*/true)) {}
+
       bool AppendEntries(const raftRpcProtoc::AppendEntriesArgs* args,
                         raftRpcProtoc::AppendEntriesReply* reply) override{
-                            KrpcChannel channel(m_ip,m_port);
-                            raftRpcProtoc::raftRpc_Stub stub(&channel);
-                            KrpcController controller;
-                            stub.AppendEntries(&controller,args,reply,nullptr);
-                            if(controller.Failed()){
-                              //网络超时
-                              return false;
-                            }
-                            return true;
-                        }
-      bool PreRequestVote(const raftRpcProtoc::PreRequestVoteArgs* args,raftRpcProtoc::PreRequestVoteReply* reply)override{
-        KrpcChannel channel(m_ip,m_port);
-        raftRpcProtoc::raftRpc_Stub stub(&channel);
-        KrpcController controller;
-        stub.PreRequestVote(&controller,args,reply,nullptr);
-        if(controller.Failed()){
-          //网络超市
+          std::lock_guard<std::mutex> lk(m_mtx);
+          raftRpcProtoc::raftRpc_Stub stub(m_channel.get());
+          KrpcController controller;
+          stub.AppendEntries(&controller,args,reply,nullptr);
+          if(controller.Failed()){
+            // 网络错误 / 超时
             return false;
-        }
+          }
           return true;
       }
+
+      bool PreRequestVote(const raftRpcProtoc::PreRequestVoteArgs* args,
+                          raftRpcProtoc::PreRequestVoteReply* reply) override{
+          std::lock_guard<std::mutex> lk(m_mtx);
+          raftRpcProtoc::raftRpc_Stub stub(m_channel.get());
+          KrpcController controller;
+          stub.PreRequestVote(&controller,args,reply,nullptr);
+          if(controller.Failed()){
+            return false;
+          }
+          return true;
+      }
+
       bool RequestVote(const raftRpcProtoc::RequestVoteArgs* args,
                        raftRpcProtoc::RequestVoteReply* reply) override{
-                            KrpcChannel channel(m_ip,m_port);
-                            raftRpcProtoc::raftRpc_Stub stub(&channel);
-                            KrpcController controller;
-                            stub.RequestVote(&controller,args,reply,nullptr);
-                            if(controller.Failed()){
-                              //网络超时
-                              return false;
-                            }
-                            return true;
-                        }
+          std::lock_guard<std::mutex> lk(m_mtx);
+          raftRpcProtoc::raftRpc_Stub stub(m_channel.get());
+          KrpcController controller;
+          stub.RequestVote(&controller,args,reply,nullptr);
+          if(controller.Failed()){
+            return false;
+          }
+          return true;
+      }
+
       bool InstallSnapshot(const raftRpcProtoc::InstallSnapshotRequest* request,
                           raftRpcProtoc::InstallSnapshotResponse* response) override{
-                            KrpcChannel channel(m_ip,m_port);
-                            raftRpcProtoc::raftRpc_Stub stub(&channel);
-                            KrpcController controller;
-                            stub.InstallSnapshot(&controller,request,response,nullptr);
-                            if(controller.Failed()){
-                              //网络超时
-                              return false;
-                            }
-                            return true;
-                        }
+          std::lock_guard<std::mutex> lk(m_mtx);
+          raftRpcProtoc::raftRpc_Stub stub(m_channel.get());
+          KrpcController controller;
+          stub.InstallSnapshot(&controller,request,response,nullptr);
+          if(controller.Failed()){
+            return false;
+          }
+          return true;
+      }
+
     private:
       std::string m_ip;
       uint16_t m_port;
+      std::shared_ptr<KrpcChannel> m_channel; // 复用同一个 Channel
+      std::mutex m_mtx;                       // 保证同一连接上一次只跑一个 RPC
 };
 
 // 一个简单的线程安全队列，供 Raft 和 KvServer 之间传递 ApplyMsg / Op 使用

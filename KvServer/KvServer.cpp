@@ -73,10 +73,11 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetRepl
     bool isLeader=false;
     m_raftNode->Start(op,&raftindex,&isLeader);//raftindex，raft预计的logIndex,虽然是预计，但是正确情况下，是准确的，op的具体内容对raft来说，是隔离的
 
-    if(!isLeader){
-        reply->set_err(ErrWrongLeader);
-        return;
-    }
+    if (!isLeader) {
+    std::cout << "[Get] not leader, reply ErrWrongLeader, index=" << raftindex << std::endl;
+    reply->set_err(ErrWrongLeader);
+    return;
+}
 
     //create waitForch
     m_mtx.lock();

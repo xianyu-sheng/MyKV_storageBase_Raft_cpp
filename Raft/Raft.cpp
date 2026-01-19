@@ -333,6 +333,7 @@ bool Raft::preElection(){
             return false;
         }
     }
+    std::cout << "preelection sucess!" << std::endl;
     //拿到半数以上的投票 开始正式选举
     return votes >= totalPeers/2+1;
 }
@@ -625,14 +626,18 @@ void Raft::doHeartBeat() {
         }
 
         DPrintf("[func-Raft::doHeartBeat()-Leader:{%d}] 处理追随者[%d]的心跳/日志同步\n", m_me, peerId);
-        myAssert(m_nextIndex[peerId] >= 1, format("追随者[%d]的nextIndex异常: %d", peerId, m_nextIndex[peerId]));
+
+        // 防御：nextIndex 最小为 1
+        if (m_nextIndex[peerId] < 1) {
+            DPrintf("[func-Raft::doHeartBeat()-Leader:{%d}] 修正异常 nextIndex[%d]=%d 为 1\n",
+                    m_me, peerId, m_nextIndex[peerId]);
+            m_nextIndex[peerId] = 1;
+        }
 
         // 根据nextIndex判断需要发送快照还是日志条目
-        if (m_nextIndex[peerId] < m_lastSnapshotIncludeIndex) {
-            // 发送快照到追随者
+        if (m_nextIndex[peerId] <= m_lastSnapshotIncludeIndex) {   // ★ 建议用 <=
             startSnapshotSendThread(peerId, successCount);
         } else {
-            // 发送日志条目到追随者
             startLogEntriesSendThread(peerId, successCount);
         }
     }
@@ -907,9 +912,18 @@ bool Raft::isStillLeader() {
 void Raft::handleLogMismatch(int peerId, std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply) {
     // -100是卡哥定义的特殊标记，跳过无效回退
     if (reply->updatenextindex() != -100) {
+        int nextIdx=reply->updatenextindex();
+        //防御性下界：Raft日志从Index从1开始，0谁prevelogindex的虚拟值
+        if(nextIdx<1){
+            nextIdx=1;
+        }
+        //如果已经已经有快照了  nextIndex至少要指向快照之后的第一条日志
+        if(nextIdx<=m_lastSnapshotIncludeIndex){
+            nextIdx=m_lastSnapshotIncludeIndex+1;
+        }
         DPrintf("[func-sendAppendEntries rf{%d} 返回的日志term相等 但不匹配  回退nextindex[%d]:{%d}\n]",
-                m_me, peerId, reply->updatenextindex());
-        m_nextIndex[peerId] = reply->updatenextindex(); // 用追随者返回的nextIndex优化重试
+                m_me, peerId, nextIdx);
+        m_nextIndex[peerId] = nextIdx; // 用追随者返回的nextIndex优化重试
     }
 }
 
@@ -1044,6 +1058,7 @@ void Raft::AppendEntries1(const raftRpcProtoc::AppendEntriesArgs* args,
         reply->set_success(false);
         reply->set_term(m_currentTerm);
         reply->set_updatenextindex(m_lastSnapshotIncludeIndex + 1);
+        return;//必须立即返回，不能在走后面的matchlog/mismatch逻辑
     }
 
     // 日志匹配与否
