@@ -73,11 +73,10 @@ MyKV_storageBase_Raft_cpp 是一个基于 Raft 共识算法的分布式 KV 存�
 
 ---
 
-## 三、框架图（预留）
+## 三、框架图
 
 ![alt text](image.png)
 
-### 建议的框架图内容（你画图时可以参考）
 
 - **整体结构层次**
   - 上层：多个客户端（Clerk / kvclient），通过 myRPC 调用 [KvServer](cci:2://file:///home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/kvServer.h:29:0-70:1) 的 `Get/PutAppend` 接口。
@@ -103,7 +102,109 @@ MyKV_storageBase_Raft_cpp 是一个基于 Raft 共识算法的分布式 KV 存�
 
 ---
 
-## 四、测试与运行命令（示例）
+## 四、一致性与容错保证
+
+这一节回答几个常见的“系统保证什么”问题，方便在面试或阅读代码时快速对应。
+
+### 1. 一致性模型（线性一致 Linearizability）
+
+- **写（Put / Append）路径**
+  - 客户端通过 `Clerk::Put/Append` 发起请求，携带 `(ClientId, RequestId)`。
+  - KvServer 将请求封装为 `Op`，调用 `Raft::Start(op, &index, &isLeader)`，**所有写请求必须先进入 Raft 日志**。
+  - 只有当前节点是 Leader 时才继续处理；否则直接返回 `ErrWrongLeader`，由客户端重试其它节点。
+  - KvServer 为每个日志 `index` 在 `waitApplyCh[index]` 上阻塞等待 `ApplyMsg`（例如 `CONSENSUS_TIMEOUT=500ms`）。
+  - 当该日志条目在多数节点复制成功并被提交后，Raft 通过 `ApplyMsg` 推送到 KvServer 的 `Apply` 线程，KvServer 在本地 KV 引擎上执行操作并唤醒等待的 RPC。
+
+- **读（Get）路径**
+  - 当前实现中，`Get` 同样会被封装为 `Op(Operation="Get")`，通过 `Raft::Start` 写入 Raft 日志，并在 `waitApplyCh[index]` 上等待对应 `ApplyMsg`。
+  - 在 `Apply` 中，对于 `Get` 日志不会修改 KV 数据，只是在跳表上读取当前值并记录到去重表中，然后唤醒等待的 RPC。
+  - 因为读请求也经过 Raft 日志、只在日志提交后才返回，因此 **提供线性一致的读（Strong Read）**，代价是读性能与写相同级别。
+
+> 总结：当前版本中，所有 `Get/Put/Append` 都经由 Leader 串行提交并等待日志提交后才返回，对外保证线性一致性（Linearizability）。
+
+### 2. 容错能力与恢复
+
+- **Raft 容错模型**
+  - 本项目默认部署为 **3 节点 Raft 集群**（3 个 kvserver 进程）。
+  - 在任意时刻，只要有 **多数派（≥2 节点）存活且能互相通信**，集群即可对外提供读写服务。
+  - 3 节点集群可以容忍 **1 个节点宕机或网络隔离**。
+
+- **持久化与重启恢复**
+  - 每个节点都有独立的持久化目录 `./raft_persist`，通过 `Persister` 类管理：
+    - `raft_state_<me>`：持久化当前 term、votedFor、Raft 日志等状态；
+    - `snapshot_<me>`：持久化可选的快照数据（如压缩后的状态机）。
+  - Raft 启动时先从 `Persister` 读取本地 `raft_state` 和 `snapshot`，恢复为最近一次持久化时的状态；
+  - 之后通过正常的 Raft 协议（AppendEntries / InstallSnapshot）从当前 Leader 拉取缺失日志或快照，补齐进度。
+
+> 直观理解：单个节点宕机重启后，会从磁盘恢复到上一次持久化的状态，再由 Leader 补齐缺失的日志，从而回到一致视图。
+
+### 3. 幂等与重复请求处理
+
+为了应对网络抖动、客户端重试等情况，系统在 **KvServer 层实现了请求去重与幂等处理**：
+
+- **客户端侧（Clerk）**
+  - 每个 Clerk 在 `Init` 时生成一个全局唯一的 `ClientId_`（随机数），并维护单调递增的 `RequestId_`；
+  - 每次 `Get/Put/Append` 调用都会带上 `(clientid, requestid)`，发生超时或 `ErrWrongLeader` 时会在客户端重试调用。
+
+- **服务端侧（KvServer）**
+  - 在 `Apply` 阶段，KvServer 维护一张最近请求表（例如 `m_lastRequests`），按 `(ClientId, RequestId)` 记录已经执行过的请求和结果；
+  - 收到新的 `ApplyMsg` 时，若发现该 `(clientId, requestId)` 已存在，则认为是重复请求，根据记录的结果直接返回，**不再对 KV 引擎执行写入**；
+  - 在 `Get` / `PutAppend` 的 RPC 处理函数中，如果等待 Raft 日志提交超时，会根据 `ifRequestDuplicate` 判断该请求是否已经在后台被提交并应用：
+    - 若是重复请求（说明已经在某次尝试中成功提交），则直接返回 `OK`；
+    - 否则返回 `ErrWrongLeader`，交由客户端切换节点重试。
+
+通过上述机制，即使客户端因为网络原因重试多次，最终也只会有 **一次真实写入生效**，其余重试都被去重，保证幂等性。
+
+---
+
+## 五、设计说明与常见问题
+
+这一节从“面试官视角”回答几个常见问题，帮助快速把代码和架构图对上号。
+
+### 1. 为什么读也走 Raft 日志，而不是直接读本地 KV？
+
+- 当前实现中，`Get` 被当作一种特殊的 `Op` 写入 Raft 日志，并在提交后才返回结果。
+- 这样做的好处是实现简单：**读写统一走一条 Raft 流程**，可以直接复用 `waitApplyCh`/`ApplyMsg` 这套机制，同时天然满足线性一致读的语义。
+- 代价是读性能与写操作同一个量级（每次读都要复制到多数派），相比只读本地缓存/只读 Leader 内存要慢一些。
+
+> 可以在面试中明确：当前版本为了简化实现和保证语义，采用“读写统一经由 Raft 日志”的强一致读方案，后续可以通过 ReadIndex / lease read 等方式做性能优化。
+
+### 2. 节点宕机或重启时系统会发生什么？
+
+- 以 3 节点集群为例：
+  - 任意 **1 个节点宕机** 时，只要其余 2 个节点之间网络正常，就仍能选出 Leader 并对外提供服务；
+  - 宕机节点重启后，会先从本地 `raft_state_<me>` / `snapshot_<me>` 恢复到最近一次持久化的状态，再通过 Leader 的 AppendEntries / InstallSnapshot 补齐缺失日志。
+- 实际验证方式可以参考：
+  1. 启动 3 个 kvserver，写入若干 `Put`；
+  2. `kill -9` 当前 Leader 进程，观察其他节点重新选主；
+  3. 重启被 kill 的节点，再通过 `Get` 验证数据仍然正确。
+
+### 3. 客户端重试会不会导致重复写？
+
+- Clerk 侧：每个客户端有固定的 `ClientId_` 和单调递增的 `RequestId_`，所有 RPC 都携带 `(clientid, requestid)`，在遇到 `ErrWrongLeader` 或网络错误时会选择其他节点重试。
+- KvServer 侧：
+  - 在 `Apply` 中维护最近请求表 `m_lastRequests`（逻辑上），按 `(ClientId, RequestId)` 记录已经执行过的操作及结果；
+  - 若再次收到相同 `(ClientId, RequestId)` 的 `ApplyMsg`，则视为重复请求，不再对跳表执行写入，仅返回之前缓存的结果；
+  - 在 RPC 处理函数中，如果等待 Raft 日志提交超时，会先调用 `ifRequestDuplicate` 判断该请求是否已经在后台成功提交，已提交则直接返回 `OK`，否则返回 `ErrWrongLeader` 让客户端切换节点。
+
+> 结合上面的 clientId + requestId 去重机制，可以回答“重复请求是否会造成多次写入”的问题：不会，最多只会有一次真实写入，其余重试都会被 KvServer 识别为重复并复用之前的结果。
+
+### 4. 工程化与组件选型的考虑
+
+- **Raft + 自研 KV 引擎**：将一致性和复制逻辑收敛在 Raft 模块中，KvServer 只关心状态机（跳表）更新，职责清晰，便于调试和扩展。
+- **ZooKeeper 作为服务发现**：
+  - 在 `/Service/Method/Port` 路径下注册 KvServer / RaftRpc 实例，使用临时子节点感知实例的上线/下线；
+  - 客户端通过 `GetChildren` 获取所有可用实例并做轮询，天然支持多副本和水平扩展。
+- **myRPC 自研框架**：
+  - 基于 TCP + protobuf 封装同步 RPC 调用，支持 `KrpcProvider` 注册 protobuf Service，`KrpcChannel` 负责序列化、发送与接收；
+  - 支持连接复用（keep-alive）和超时控制，并在实际开发中定位和修复了 header 复用导致的 RPC 请求误分发问题。
+- **一键脚本与 README**：
+  - README 中给出了从编译、启动 ZooKeeper、拉起 3 个 kvserver、到运行 kvclient 的完整命令；
+  - 通过简单脚本可以在一个终端内后台启动 3 个节点，并将日志分别重定向到 `kvserver{0,1,2}.log` 便于排查问题。
+
+---
+
+## 六、测试与运行命令（示例）
 
 下面的命令是**示例**，你可以根据自己项目实际的可执行文件名 / 构建方式做适当修改。
 
@@ -145,3 +246,6 @@ tail -n 50 -f kvserver0.log kvserver1.log kvserver2.log
 终端 4：客户端
 cd /home/your_user/MyKV_storageBase_Raft_cpp/build
 ./kvclient -i ../myRPC/conf/myrpc.conf
+
+测试效果
+![alt text](image-2.png)
