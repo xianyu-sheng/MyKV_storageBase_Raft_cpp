@@ -272,9 +272,12 @@ void Raft::electionTimeoutTicker(){
             //说明睡眠的这段时间有重置定时器，那么就没有超时 再次睡眠
             continue;
         }
+        /*
         if(preElection()){
             doElection();
         }
+        */
+        doElection();
     }
 }
 //预选举

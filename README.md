@@ -75,9 +75,7 @@ MyKV_storageBase_Raft_cpp 是一个基于 Raft 共识算法的分布式 KV 存�
 
 ## 三、框架图（预留）
 
-> **提示：此处留给你后续补充架构图**。可以在这里加上一句话，例如：
->
-> - TODO：在此插入 MyKV_storageBase_Raft_cpp 的总体架构图。
+![alt text](image.png)
 
 ### 建议的框架图内容（你画图时可以参考）
 
@@ -132,18 +130,18 @@ cmake ..
 make -j
 
 ### 3.测试
-终端 1：节点 0
+终端 1：节点 0 一键启动3节点
 cd /home/your_user/MyKV_storageBase_Raft_cpp/build
-RAFT_ME=0 ./kvserver
 
-终端 2：节点 1
-cd /home/your_user/MyKV_storageBase_Raft_cpp/build
-RAFT_ME=1 ./kvserver
+pkill kvserver 2>/dev/null || true
 
-终端 3：节点 2
-cd /home/your_user/MyKV_storageBase_Raft_cpp/build
-RAFT_ME=2 ./kvserver
+RAFT_ME=0 ./kvserver -i ../myRPC/conf/myrpc_0.conf >kvserver0.log 2>&1 &
+RAFT_ME=1 ./kvserver -i ../myRPC/conf/myrpc_1.conf >kvserver1.log 2>&1 &
+RAFT_ME=2 ./kvserver -i ../myRPC/conf/myrpc_2.conf >kvserver2.log 2>&1 &
+
+sleep 0.3
+tail -n 50 -f kvserver0.log kvserver1.log kvserver2.log
 
 终端 4：客户端
 cd /home/your_user/MyKV_storageBase_Raft_cpp/build
-RAFT_ME=3 ./kvclient
+./kvclient -i ../myRPC/conf/myrpc.conf
