@@ -18,3 +18,24 @@ private:
     int RequestId_;
     int ClientId_; // 新增：客户端唯一标识
 };
+
+std::string random_key(int keySpace,std::mt19937 &gen){
+    std::uniform_int_distrubution<int> dist(0,keySpace-1);
+    int id=dist(gen);
+    return "key"+std::to_string(id);
+}
+
+std::string random_value(int valueSize,std::mt19937 &gen){
+    static const char charset[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+    
+    std::uniform_int_distrubution<int> dist(0,(int)sizeof(charset)-2);
+    std::string v;
+    v.reserve(valueSize);
+    for(int i=0;i<valueSize;i++){
+        v.push_back(charset[dist(gen)]);
+    }
+    return v;
+}
