@@ -386,4 +386,7 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o
  /usr/include/google/protobuf/extension_set.h
  /usr/include/c++/11/cassert
  /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftRpcProtoc/raftRPC.pb.h
+ /usr/include/c++/11/thread
+ /usr/include/c++/11/bits/std_thread.h
+ /usr/include/c++/11/bits/this_thread_sleep.h
 

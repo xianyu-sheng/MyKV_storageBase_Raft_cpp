@@ -3,13 +3,25 @@
 
 #include <iostream>
 #include <vector>
+#include <iostream>
+#include <vector>
+#include <thread>
+#include <chrono>
+#include <algorithm>
+#include <numeric>
+#include <cstdlib>
 struct BenchResult{
     std::vector<long long> latenciesUs;//每次请求耗时微妙
-}
+};
+bool benchMode=false;
+int totalOps=10000;
+int threads=4;
+int writeRatio=50;
+int keySpace=1000;
+int valueSize=128;
 
 //run_benchmark函数框架
-void run_benchmark(const std::string& configPath,
-                    int totalOps,
+void run_benchmark(int totalOps,
                     int threads,
                     int writeRatio,
                     int keySpace,
@@ -22,11 +34,12 @@ void run_benchmark(const std::string& configPath,
     for(int i=0;i<threads;i++){
         workers.emplace_back([&,i](){
             //每个线程自己创建clerk 更简单 不用考虑线程安全
-            Clerk clerk(configPath);
+            Clerk clerk;
+            clerk.Init();
             BenchResult &r=results[i];
             r.latenciesUs.reserve(opsPerThread);
             std::mt19937 gen((unsigned)Clock::now().time_since_epoch().count()+i);
-            std::uniform_int_distrubution<int> opDist(0,99);
+            std::uniform_int_distribution<int> opDist(0, 99);
             for(int j=0;j<opsPerThread;j++){
                 std::string key=random_key(keySpace,gen);
                 bool doWrite=opDist(gen) < writeRatio;
@@ -40,6 +53,7 @@ void run_benchmark(const std::string& configPath,
                 auto t2=Clock::now();
                  long long us = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
                 r.latenciesUs.push_back(us);
+            }
         });
     }      
     for(auto &th:workers)   th.join();
@@ -55,14 +69,14 @@ void run_benchmark(const std::string& configPath,
                             results[t].latenciesUs.begin(),
                             results[t].latenciesUs.end());
     }
-    double totalSec=totalUs/1e6;
+    double totalSec=totalUs.count()/1e6;
     double qps=totalOpsReal/totalSec;
 
     //计算平均和
     std::sort(allLatencies.begin(),allLatencies.end());
     double avgUs=std::accumulate(allLatencies.begin(),allLatencies.end(),0.0)/allLatencies.size();
     auto p95=allLatencies[(size_t)(allLatencies.size()*0.95)];
-    auto p99=allLatencies[(size_t)(allLatenciess.size()*0.99)];
+    auto p99=allLatencies[(size_t)(allLatencies.size()*0.99)];
     std::cout << "总请求数: " << totalOpsReal << "\n";
     std::cout << "总耗时: " << totalSec << " s\n";
     std::cout << "QPS: " << qps << " ops/s\n";
@@ -72,19 +86,11 @@ void run_benchmark(const std::string& configPath,
 }
 int main(int argc,char** argv){
     //新增一组变量用来支持--bench 模式
-    bool benchMode=false;
-    int totalOps=10000;
-    int threads=4;
-    int writeRatio=50;
-    int keySpace=1000;
-    int valueSize=128;
-
-
     //1.初始化myRPC框架，读取conf/myrpc.conf  这里只是读取-i参数 
     KrpcApplication::Init(argc,argv);
     //在后面添加参数解析
     bool startParsing=false;
-    for(int i=1;i<argv.size();i++){
+    for(int i=1;i<argc;i++){
         std::string arg=argv[i];
         //1.定位分隔符""--"
         if(arg=="--"){
@@ -96,7 +102,7 @@ int main(int argc,char** argv){
         if(arg=="--bench"){
             benchMode=true;
         }else if(arg=="--ops" && i+1<argc){
-            toatlOps=std::atoi(argv[++i]);
+            totalOps=std::atoi(argv[++i]);
         }else if(arg=="--threads" && i+1< argc){
             threads=std::atoi(argv[++i]);
         }else if(arg=="--write-ratio" && i+1 <argc){
@@ -122,7 +128,7 @@ int main(int argc,char** argv){
         std::cout <<"Get(bar)= " << v2 <<std::endl;
     }else{
         //压测模式：创建多个线程每个线程循环Clerk::put/Get，记录耗时 最后统计
-        run_benchmark(configPath,totalOps,threads,writeRatio,keySpace,valueSize);
+        run_benchmark(totalOps,threads,writeRatio,keySpace,valueSize);
     }
     
     return 0;

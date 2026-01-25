@@ -20,7 +20,7 @@ private:
 };
 
 std::string random_key(int keySpace,std::mt19937 &gen){
-    std::uniform_int_distrubution<int> dist(0,keySpace-1);
+    std::uniform_int_distribution<int> dist(0,keySpace-1);
     int id=dist(gen);
     return "key"+std::to_string(id);
 }
@@ -31,7 +31,7 @@ std::string random_value(int valueSize,std::mt19937 &gen){
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz";
     
-    std::uniform_int_distrubution<int> dist(0,(int)sizeof(charset)-2);
+    std::uniform_int_distribution<int> dist(0,(int)sizeof(charset)-2);
     std::string v;
     v.reserve(valueSize);
     for(int i=0;i<valueSize;i++){
