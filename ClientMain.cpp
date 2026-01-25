@@ -14,7 +14,7 @@ struct BenchResult{
     std::vector<long long> latenciesUs;//每次请求耗时微妙
 };
 bool benchMode=false;
-int totalOps=10000;
+int totalOps=200;
 int threads=4;
 int writeRatio=50;
 int keySpace=1000;
@@ -44,6 +44,9 @@ void run_benchmark(int totalOps,
                 std::string key=random_key(keySpace,gen);
                 bool doWrite=opDist(gen) < writeRatio;
                 auto t1=Clock::now();
+                if ((j + 1) % 50 == 0 && i == 0) {
+                    std::cout << "progress: " << (j + 1) << "/" << opsPerThread << std::endl;
+                }
                 if(doWrite){
                     std::string val=random_value(valueSize,gen);
                     clerk.Put(key,val);

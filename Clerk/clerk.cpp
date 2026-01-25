@@ -36,7 +36,7 @@ void Clerk::Put(const std::string& key, const std::string& value) {
         }
         if(err=="ErrWrongLeader"){
             //当前节点不是Leader节点 重试
-            usleep(100000);
+            usleep(10000);
             continue;
         }
         return;//其他错误 直接返回
@@ -72,7 +72,7 @@ std::string Clerk::Get(const std::string& key){
         }
         if(err=="ErrWrongLeader"){
             //同Put：换节点重试
-            usleep(100000);
+            usleep(10000);
             continue;
         }
         //其他业务错误
