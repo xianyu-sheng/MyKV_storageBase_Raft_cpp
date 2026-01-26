@@ -266,8 +266,7 @@ cd /home/your_user/MyKV_storageBase_Raft_cpp/build
 ./kvclient -i ../myRPC/conf/myrpc.conf -- --bench --ops 100 --threads 4 ...
 
 压测效果
-
-![alt text](image-3.png)
+![alt text](image-4.png)
 
 ---
 
