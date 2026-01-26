@@ -131,3 +131,24 @@ target_link_libraries(kvclient
         kvcore
         myrpc_core
 )
+
+# === 辅助目标：清理 kvserver 日志，防止日志无限增长 ===
+# 使用 scripts/clean_logs.sh 将 kvserver{0,1,2}.log 截断为 0 字节。
+# BUILD_DIR 通过环境变量传入，脚本内部会在源码根目录和 build 目录下查找日志。
+add_custom_target(clean_kv_logs
+    COMMAND ${CMAKE_COMMAND} -E env BUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
+            bash ${CMAKE_CURRENT_SOURCE_DIR}/scripts/clean_logs.sh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Truncate kvserver logs (kvserver0/1/2.log)"
+)
+
+# 便捷目标：清理日志后在 build 目录中运行 kvclient（普通模式）。
+# 使用方式：在 build 目录中执行 `make run_kvclient_default`。
+add_custom_target(run_kvclient_default
+    COMMAND ${CMAKE_COMMAND} -E env BUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
+            bash ${CMAKE_CURRENT_SOURCE_DIR}/scripts/clean_logs.sh
+    COMMAND kvclient -i ../myRPC/conf/myrpc.conf
+    DEPENDS kvclient
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMENT "Clean kvserver logs then run kvclient with default config"
+)

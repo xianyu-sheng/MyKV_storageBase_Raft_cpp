@@ -233,6 +233,15 @@ cmake ..
 make -j
 
 ### 3.测试
+在运行测试之前，为防止我们的测试日志无限制增长，这里可以先运行清理脚本 清理一下测试日志
+cd build
+make clean_kv_logs
+# 然后再 pkill kvserver / 启动三个 kvserver / 跑 kvclient
+
+如果你想清理日子并启动普通客户端测试 可以执行如下命令
+cd build
+make run_kvclient_default
+
 终端 1：节点 0 一键启动3节点
 cd /home/your_user/MyKV_storageBase_Raft_cpp/build
 

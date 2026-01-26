@@ -36,6 +36,8 @@ void run_benchmark(int totalOps,
             //每个线程自己创建clerk 更简单 不用考虑线程安全
             Clerk clerk;
             clerk.Init();
+            // 预热一次 Put，确保先通过 PutAppend 建连接
+            clerk.Put("__bench_warmup__", "1");
             BenchResult &r=results[i];
             r.latenciesUs.reserve(opsPerThread);
             std::mt19937 gen((unsigned)Clock::now().time_since_epoch().count()+i);

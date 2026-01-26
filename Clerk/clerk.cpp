@@ -13,14 +13,17 @@ void Clerk::Put(const std::string& key, const std::string& value) {
     request.set_requestid(RequestId_);
     request.set_op("Put");
     int retry_count=0;
+    const int kMaxretry=50;
     while (true) {
         //2.每次请求构造一个KrpcChannel(内部会通过ZooKeeper找到一个服务节点)
-
-        KrpcController controller;//设计一个控制器 返回错误信息
+        KrpcChannel channel(false); 
+        raftKVRpcProtoc::kvServerRpc_Stub stub(&channel);
+        
+        KrpcController controller;
         raftKVRpcProtoc::PutAppendReply response;
         
-        //3.发起RPC
-        stub_->PutAppend(&controller,&request,&response,nullptr);
+        // 使用局部的 stub 发起请求
+        stub.PutAppend(&controller, &request, &response, nullptr);
 
         //4.处理myRpc 层面的错误（网络/超时/反序列化等）
         //框架级错误
@@ -28,6 +31,11 @@ void Clerk::Put(const std::string& key, const std::string& value) {
             //打印日志 并重试
             //std::cerr<<"RPC failed:"<<controller.ErrorText()<<std::endl;
             retry_count++;
+            if (retry_count > kMaxretry) {
+                std::cerr << "Get RPC failed too many times, give up. error="
+                        << controller.ErrorText() << std::endl;
+                return ;   // 或者返回特殊值，或者抛异常
+            }
             //连不上 那就睡一会儿
             usleep(100000);
             continue;
@@ -54,14 +62,25 @@ std::string Clerk::Get(const std::string& key){
     request.set_clientid(std::to_string(ClientId_));
     request.set_requestid(RequestId_);
     int retry_count=0;
+    const int kMaxretry=50;
     while(true){
+        KrpcChannel channel(false); 
+        raftKVRpcProtoc::kvServerRpc_Stub stub(&channel);
+        
         KrpcController controller;
         raftKVRpcProtoc::GetReply response;
-        stub_->Get(&controller,&request,&response,nullptr);
+        
+        // 使用局部的 stub 发起请求
+        stub.Get(&controller, &request, &response, nullptr);
         //如果是框架级错误
         if(controller.Failed()){
             //框架级错误：重试
             retry_count++;
+            if(retry_count>kMaxretry){
+                std::cerr << "Get RPC failed too many times, give up. error="
+                      << controller.ErrorText() << std::endl;
+                return "";   // 或者返回特殊值，或者抛异常
+            }
             usleep(100000);
             continue;
         }
@@ -92,6 +111,6 @@ void Clerk::Init(const std::string& configFile){
     ClientId_=std::rand();
 
     //创建一个 带keep_alive的KrpcChannel  使用ZK发现服务
-    channel_=std::make_unique<KrpcChannel>(true);
-    stub_=std::make_unique<raftKVRpcProtoc::kvServerRpc_Stub>(channel_.get());
+    //channel_=std::make_unique<KrpcChannel>(true);
+    //stub_=std::make_unique<raftKVRpcProtoc::kvServerRpc_Stub>(channel_.get());
 }

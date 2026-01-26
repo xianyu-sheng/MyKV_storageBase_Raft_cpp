@@ -181,6 +181,32 @@ kvclient/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvclient.dir/build.make CMakeFiles/kvclient.dir/build
 .PHONY : kvclient/fast
 
+#=============================================================================
+# Target rules for targets named clean_kv_logs
+
+# Build rule for target.
+clean_kv_logs: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean_kv_logs
+.PHONY : clean_kv_logs
+
+# fast build rule for target.
+clean_kv_logs/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/clean_kv_logs.dir/build.make CMakeFiles/clean_kv_logs.dir/build
+.PHONY : clean_kv_logs/fast
+
+#=============================================================================
+# Target rules for targets named run_kvclient_default
+
+# Build rule for target.
+run_kvclient_default: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_kvclient_default
+.PHONY : run_kvclient_default
+
+# fast build rule for target.
+run_kvclient_default/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_kvclient_default.dir/build.make CMakeFiles/run_kvclient_default.dir/build
+.PHONY : run_kvclient_default/fast
+
 Clerk/clerk.o: Clerk/clerk.cpp.o
 .PHONY : Clerk/clerk.o
 
@@ -573,6 +599,8 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... clean_kv_logs"
+	@echo "... run_kvclient_default"
 	@echo "... kvclient"
 	@echo "... kvcore"
 	@echo "... kvserver"

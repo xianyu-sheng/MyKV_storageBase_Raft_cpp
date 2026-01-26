@@ -63,4 +63,6 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/myrpc_provider.dir/DependInfo.cmake"
   "CMakeFiles/kvserver.dir/DependInfo.cmake"
   "CMakeFiles/kvclient.dir/DependInfo.cmake"
+  "CMakeFiles/clean_kv_logs.dir/DependInfo.cmake"
+  "CMakeFiles/run_kvclient_default.dir/DependInfo.cmake"
   )
