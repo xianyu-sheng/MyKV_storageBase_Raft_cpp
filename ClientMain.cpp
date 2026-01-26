@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <numeric>
 #include <cstdlib>
+
+
+
 struct BenchResult{
     std::vector<long long> latenciesUs;//每次请求耗时微妙
 };
@@ -19,6 +22,8 @@ int threads=4;
 int writeRatio=50;
 int keySpace=1000;
 int valueSize=128;
+
+//辅助函数：创建日志目录 避免mkdir失败
 
 //run_benchmark函数框架
 void run_benchmark(int totalOps,
@@ -90,7 +95,7 @@ void run_benchmark(int totalOps,
     std::cout << "p99 延迟: " << p99 / 1000.0 << " ms\n";
 }
 int main(int argc,char** argv){
-    //新增一组变量用来支持--bench 模式
+    
     //1.初始化myRPC框架，读取conf/myrpc.conf  这里只是读取-i参数 
     KrpcApplication::Init(argc,argv);
     //在后面添加参数解析
@@ -135,6 +140,5 @@ int main(int argc,char** argv){
         //压测模式：创建多个线程每个线程循环Clerk::put/Get，记录耗时 最后统计
         run_benchmark(totalOps,threads,writeRatio,keySpace,valueSize);
     }
-    
     return 0;
 }

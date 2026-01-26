@@ -1,57 +1,83 @@
 #include "clerk.h"
 #include <fstream>
 #include <iostream>
-#include <unistd.h> // for usleep
+#include <unistd.h> 
 
+// 辅助函数：负责建立连接
+// 这里我们依然传 false (短连接模式)，但因为我们把对象存下来了，它实际上就是长连接！
+// 这样做可以避开你之前遇到的 keep_alive=true 的那个 bug。
+void Clerk::InitStub() {
+    // 每次创建时，让它去 ZK 查一次
+    channel_ = std::make_shared<KrpcChannel>(false); 
+    stub_ = std::make_shared<raftKVRpcProtoc::kvServerRpc_Stub>(channel_.get());
+}
+
+void Clerk::Init(const std::string& configFile){
+    RequestId_ = 0;
+    std::srand(std::time(nullptr));
+    ClientId_ = std::rand();
+    // 刚开始不需要立即连接，等发请求时懒加载
+    channel_ = nullptr;
+    stub_ = nullptr;
+}
 
 void Clerk::Put(const std::string& key, const std::string& value) {
     RequestId_++; 
     raftKVRpcProtoc::PutAppendArgs request;
     request.set_key(key);
     request.set_value(value);
-    request.set_clientid(std::to_string(ClientId_)); // clientid 是 bytes/string，用字符串表示
+    request.set_clientid(std::to_string(ClientId_)); 
     request.set_requestid(RequestId_);
     request.set_op("Put");
-    int retry_count=0;
-    const int kMaxretry=50;
+    
+    int retry_count = 0;
+    const int kMaxRetry = 50; // 最大重试次数
+
     while (true) {
-        //2.每次请求构造一个KrpcChannel(内部会通过ZooKeeper找到一个服务节点)
-        KrpcChannel channel(false); 
-        raftKVRpcProtoc::kvServerRpc_Stub stub(&channel);
-        
+        // 1. 【懒汉式连接】：如果 stub 为空，说明是第一次或者是上一次出错了，需要重连
+        if (!stub_) {
+            InitStub();
+        }
+
         KrpcController controller;
+        controller.SetTimeout(3000);
         raftKVRpcProtoc::PutAppendReply response;
         
-        // 使用局部的 stub 发起请求
-        stub.PutAppend(&controller, &request, &response, nullptr);
+        // 2. 使用成员变量 stub_ 发送请求
+        stub_->PutAppend(&controller, &request, &response, nullptr);
 
-        //4.处理myRpc 层面的错误（网络/超时/反序列化等）
-        //框架级错误
+        // 3. 处理框架级错误（网络断了、ZK连不上、Server挂了）
         if(controller.Failed()){
-            //打印日志 并重试
-            //std::cerr<<"RPC failed:"<<controller.ErrorText()<<std::endl;
+            // 【核心逻辑】：一旦网络出错，认为当前连接已废，直接置空！
+            // 这样下一次循环就会自动触发 InitStub() 重新去 ZK 找节点
+            stub_ = nullptr; 
+            
             retry_count++;
-            if (retry_count > kMaxretry) {
-                std::cerr << "Get RPC failed too many times, give up. error="
-                        << controller.ErrorText() << std::endl;
-                return ;   // 或者返回特殊值，或者抛异常
+            if (retry_count > kMaxRetry) {
+                 std::cerr << "Put RPC failed too many times! Give up." << std::endl;
+                 return; 
             }
-            //连不上 那就睡一会儿
-            usleep(100000);
+            // 失败后休息一下，防止雪崩
+            usleep(200000); // 200ms
             continue;
         }
-        retry_count=0;
-        //5.业务层面的错误 和 KvServer的reply->set_err()对应
-        const std::string& err=response.err();
-        if(err=="OK"){
-            return;//成功
+        
+        retry_count = 0; // 网络通了，重置计数
+
+        // 4. 处理业务错误
+        const std::string& err = response.err();
+        if(err == "OK"){
+            return;
         }
-        if(err=="ErrWrongLeader"){
-            //当前节点不是Leader节点 重试
-            usleep(50000);
+        if(err == "ErrWrongLeader"){
+            // 找错 Leader 了。
+            // 策略：虽然网络是通的，但为了保险起见，我们也可以重置连接，
+            // 强制让 Channel 去 ZK 刷新一下最新的 Leader 是谁。
+            stub_ = nullptr; 
+            usleep(50000); // 50ms 等待选举
             continue;
         }
-        return;//其他错误 直接返回
+        return;
     }
 }
 
@@ -61,56 +87,79 @@ std::string Clerk::Get(const std::string& key){
     request.set_key(key);
     request.set_clientid(std::to_string(ClientId_));
     request.set_requestid(RequestId_);
-    int retry_count=0;
-    const int kMaxretry=50;
+    
+    int retry_count = 0;
+    const int kMaxRetry = 50;
+
     while(true){
-        KrpcChannel channel(false); 
-        raftKVRpcProtoc::kvServerRpc_Stub stub(&channel);
+        // 1. 检查连接
+        if (!stub_) {
+            InitStub();
+            
+            // --- 预热阶段 ---
+            {
+                KrpcController dummy_controller;
+                // 【修复1】：给预热请求也加上超时！
+                // 预热只是为了通连接，时间可以设短一点，比如 1000ms
+                dummy_controller.SetTimeout(1000); 
+
+                raftKVRpcProtoc::PutAppendArgs dummy_args;
+                dummy_args.set_key("ping");
+                dummy_args.set_value("warmup");
+                dummy_args.set_op("Put"); // 注意大小写，你之前写的 "put" 最好统一规范
+                dummy_args.set_clientid(std::to_string(ClientId_));
+                dummy_args.set_requestid(-1);
+
+                raftKVRpcProtoc::PutAppendReply dummy_reply;
+                stub_->PutAppend(&dummy_controller, &dummy_args, &dummy_reply, nullptr);
+
+                // 【修复2】：如果预热都超时/失败了，说明连接质量很差，不要继续发 Get 了
+                if (dummy_controller.Failed()) {
+                    // std::cerr << "Warmup failed: " << dummy_controller.ErrorText() << std::endl;
+                    stub_ = nullptr; // 销毁连接
+                    usleep(50000);   // 稍微休息
+                    continue;        // 直接进入下一次大循环重试
+                }
+            }
+        }
         
+        // --- 正式请求阶段 ---
         KrpcController controller;
+        controller.SetTimeout(3000); // 这里你已经设置了，很好
         raftKVRpcProtoc::GetReply response;
         
-        // 使用局部的 stub 发起请求
-        stub.Get(&controller, &request, &response, nullptr);
-        //如果是框架级错误
+        // 2. 发送
+        stub_->Get(&controller, &request, &response, nullptr);
+        
+        // 3. 错误处理
         if(controller.Failed()){
-            //框架级错误：重试
+            // 网络/RPC错误 -> 销毁连接，下次重连
+            stub_ = nullptr; 
+            
             retry_count++;
-            if(retry_count>kMaxretry){
-                std::cerr << "Get RPC failed too many times, give up. error="
-                      << controller.ErrorText() << std::endl;
-                return "";   // 或者返回特殊值，或者抛异常
+            if (retry_count > kMaxRetry) {
+                std::cerr << "Get RPC failed too many times! Give up." << std::endl;
+                return "";
             }
+            // 多线程下建议睡久一点，避开拥堵
+            usleep(100000); // 100ms
+            continue;
+        }
+        
+        retry_count = 0;
+        const std::string& err = response.err();
+        if(err == "OK"){
+            return response.value();
+        }
+        if(err == "ErrNoKey"){
+            return "no found,no Key"; 
+        }
+        if(err == "ErrWrongLeader"){
+            // 选错 Leader -> 销毁连接，重新去 ZK 查
+            stub_ = nullptr;
             usleep(100000);
             continue;
         }
-        retry_count=0;
-        const std::string& err=response.err();
-        if(err=="OK"){
-            //找到了 放回
-            return response.value();
-        }
-        if(err=="ErrNoKey"){
-            //语义：key不存在  一般我们返回空字符串或者是抛出异常
-            return "no found,no Key";
-        }
-        if(err=="ErrWrongLeader"){
-            //同Put：换节点重试
-            usleep(50000);
-            continue;
-        }
-        //其他业务错误
         return "";
     }
-}
-
-//新init 只做本地初始化  不再读 config 文件
-void Clerk::Init(const std::string& configFile){
-    RequestId_=0;
-    std::srand(std::time(nullptr));
-    ClientId_=std::rand();
-
-    //创建一个 带keep_alive的KrpcChannel  使用ZK发现服务
-    //channel_=std::make_unique<KrpcChannel>(true);
-    //stub_=std::make_unique<raftKVRpcProtoc::kvServerRpc_Stub>(channel_.get());
 }
