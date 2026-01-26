@@ -250,7 +250,7 @@ cd /home/your_user/MyKV_storageBase_Raft_cpp/build
 ./kvclient -i ../myRPC/conf/myrpc.conf
 
 压测命令形式
-./kvclient -i ../myRPC/conf/myrpc.conf -- --bench --ops 10000 --threads 4 ...
+./kvclient -i ../myRPC/conf/myrpc.conf -- --bench --ops 1000 --threads 4 ...
 
 测试效果
 ![alt text](image-2.png)

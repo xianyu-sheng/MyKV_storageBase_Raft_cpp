@@ -17,6 +17,8 @@ public:
 private:
     int RequestId_;
     int ClientId_; // 新增：客户端唯一标识
+    std::unique_ptr<KrpcChannel> channel_;
+    std::unique_ptr<raftKVRpcProtoc::kvServerRpc_Stub> stub_;
 };
 
 inline std::string random_key(int keySpace,std::mt19937 &gen){
