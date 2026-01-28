@@ -23,6 +23,7 @@ private:
 
     // 辅助函数：初始化或重置连接
     void InitStub();
+    void SwitchToNextServer();  // 切换到下一个服务器
 };
 
 // ... random_key 和 random_value 函数保持不变 ...

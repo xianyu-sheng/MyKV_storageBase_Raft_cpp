@@ -251,7 +251,10 @@ RAFT_ME=0 ./kvserver -i ../myRPC/conf/myrpc_0.conf >kvserver0.log 2>&1 &
 RAFT_ME=1 ./kvserver -i ../myRPC/conf/myrpc_1.conf >kvserver1.log 2>&1 &
 RAFT_ME=2 ./kvserver -i ../myRPC/conf/myrpc_2.conf >kvserver2.log 2>&1 &
 
-sleep 0.3
+# 等待 kvserver 向 ZooKeeper 注册完成（ZK注册需要1-2秒）
+sleep 2
+echo "等待服务注册到ZooKeeper..."
+
 tail -n 50 -f kvserver0.log kvserver1.log kvserver2.log
 
 终端 4：客户端
@@ -260,15 +263,6 @@ cd /home/your_user/MyKV_storageBase_Raft_cpp/build
 
 测试效果
 ![alt text](image-2.png)
-
-
-压测命令形式
-./kvclient -i ../myRPC/conf/myrpc.conf -- --bench --ops 100 --threads 4 ...
-
-压测效果
-![alt text](image-4.png)
-
----
 
 ## 七、压测功能
 
@@ -300,6 +294,10 @@ cd /home/your_user/MyKV_storageBase_Raft_cpp/build
    - 压测结束后汇总吞吐量、平均延迟、最小/最大延迟、P50/P99 百分位等指标。
    - 详细输出失败原因分布（如 `ErrWrongLeader`、网络超时、节点不可用等）。
 
+压测效果
+![alt text](image-4.png)
+
+---
 ### 使用示例
 
 #### 基础压测

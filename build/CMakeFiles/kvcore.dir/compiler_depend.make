@@ -387,7 +387,28 @@ CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raf
   /usr/include/c++/11/bits/codecvt.h \
   /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
   /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
-  /usr/include/c++/11/bits/fstream.tcc
+  /usr/include/c++/11/bits/fstream.tcc \
+  /usr/include/glog/logging.h \
+  /usr/include/c++/11/sstream \
+  /usr/include/c++/11/bits/sstream.tcc \
+  /usr/include/inttypes.h \
+  /usr/include/gflags/gflags.h \
+  /usr/include/gflags/gflags_declare.h \
+  /usr/include/gflags/gflags_gflags.h \
+  /usr/include/glog/log_severity.h \
+  /usr/include/glog/vlog_is_on.h \
+  /usr/include/x86_64-linux-gnu/sys/stat.h \
+  /usr/include/x86_64-linux-gnu/bits/stat.h \
+  /usr/include/x86_64-linux-gnu/bits/struct_stat.h \
+  /usr/include/x86_64-linux-gnu/bits/statx.h \
+  /usr/include/linux/stat.h \
+  /usr/include/linux/types.h \
+  /usr/include/x86_64-linux-gnu/asm/types.h \
+  /usr/include/asm-generic/types.h \
+  /usr/include/asm-generic/int-ll64.h \
+  /usr/include/x86_64-linux-gnu/bits/statx-generic.h \
+  /usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h \
+  /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h
 
 CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/KvServer.cpp \
   /usr/include/stdc-predef.h \
@@ -2307,17 +2328,23 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/utility/enable_if.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/fcntl-linux.h:
+/usr/include/boost/serialization/collections_load_imp.hpp:
 
-/usr/include/x86_64-linux-gnu/sys/param.h:
+/usr/include/boost/serialization/vector.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
+/usr/include/boost/archive/detail/basic_iserializer.hpp:
 
-/usr/include/boost/mpl/always.hpp:
+/usr/include/asm-generic/int-ll64.h:
 
-/usr/include/c++/11/condition_variable:
+/usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
 
-/usr/include/boost/type_traits/is_destructible.hpp:
+/usr/include/c++/11/cstdlib:
+
+/usr/include/linux/stat.h:
+
+/usr/include/x86_64-linux-gnu/sys/stat.h:
+
+/usr/include/boost/type_traits/is_enum.hpp:
 
 /usr/include/c++/11/bits/sstream.tcc:
 
@@ -2325,11 +2352,9 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/c++/11/bits/codecvt.h:
 
-/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/op_coder.h:
+/usr/include/gflags/gflags_declare.h:
 
-/usr/include/signal.h:
-
-/usr/include/boost/preprocessor/list/fold_right.hpp:
+/usr/include/boost/smart_ptr/detail/sp_has_gcc_intrinsics.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h:
 
@@ -2393,6 +2418,10 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/c++/11/bits/postypes.h:
 
+/usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h:
+
+/usr/include/boost/mpl/aux_/config/ttp.hpp:
+
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
 
 /usr/include/boost/preprocessor/comparison/not_equal.hpp:
@@ -2412,6 +2441,10 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/c++/11/unordered_map:
 
 /usr/include/boost/smart_ptr/detail/shared_count.hpp:
+
+/usr/include/asm-generic/types.h:
+
+/usr/include/boost/preprocessor/list/adt.hpp:
 
 /usr/include/google/protobuf/stubs/hash.h:
 
@@ -2436,8 +2469,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/zookeeper/zookeeper_version.h:
 
 /usr/include/x86_64-linux-gnu/asm/sockios.h:
-
-/usr/include/endian.h:
 
 /usr/include/linux/stddef.h:
 
@@ -2477,9 +2508,9 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h:
 
-/usr/include/google/protobuf/stubs/mutex.h:
-
 /usr/include/c++/11/bits/basic_ios.h:
+
+/usr/include/x86_64-linux-gnu/bits/statx-generic.h:
 
 /usr/include/c++/11/bits/streambuf.tcc:
 
@@ -2493,11 +2524,11 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/google/protobuf/has_bits.h:
 
-/usr/include/c++/11/deque:
-
-/usr/include/c++/11/bits/locale_classes.h:
-
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
+
+/usr/include/boost/aligned_storage.hpp:
+
+/usr/include/c++/11/bits/exception.h:
 
 /usr/include/x86_64-linux-gnu/sys/socket.h:
 
@@ -2514,8 +2545,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
 
 /usr/include/google/protobuf/port_undef.inc:
-
-/usr/include/boost/serialization/collections_load_imp.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/stat.h:
 
@@ -2563,6 +2592,8 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/mpl/aux_/na_assert.hpp:
 
+/usr/include/linux/types.h:
+
 /usr/include/boost/serialization/type_info_implementation.hpp:
 
 /usr/include/boost/preprocessor/control/detail/while.hpp:
@@ -2578,6 +2609,12 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/core/noinit_adaptor.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/signum-generic.h:
+
+/usr/include/signal.h:
+
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/op_coder.h:
+
+/usr/include/boost/preprocessor/list/fold_right.hpp:
 
 /usr/include/google/protobuf/unknown_field_set.h:
 
@@ -2605,6 +2642,10 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/strings.h:
 
+/usr/include/x86_64-linux-gnu/asm/types.h:
+
+/usr/include/google/protobuf/stubs/port.h:
+
 /usr/include/boost/smart_ptr/detail/sp_typeinfo_.hpp:
 
 /usr/include/c++/11/bits/streambuf_iterator.h:
@@ -2612,6 +2653,8 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/preprocessor/facilities/overload.hpp:
 
 /usr/include/assert.h:
+
+/usr/include/google/protobuf/generated_enum_util.h:
 
 /usr/include/google/protobuf/stubs/callback.h:
 
@@ -2630,8 +2673,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/type_traits/is_scalar.hpp:
 
 /usr/include/c++/11/bits/char_traits.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/timex.h:
 
@@ -2661,15 +2702,17 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/c++/11/bits/range_access.h:
 
-/usr/include/c++/11/cstdlib:
+/usr/include/x86_64-linux-gnu/sys/param.h:
 
-/usr/include/x86_64-linux-gnu/sys/stat.h:
+/usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
 
-/usr/include/linux/stat.h:
+/usr/include/boost/mpl/always.hpp:
 
 /usr/include/x86_64-linux-gnu/asm/bitsperlong.h:
 
-/usr/include/boost/serialization/vector.hpp:
+/usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:
+
+/usr/include/c++/11/bits/stl_multimap.h:
 
 /usr/include/c++/11/type_traits:
 
@@ -2686,12 +2729,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/google/protobuf/message.h:
 
 /usr/include/x86_64-linux-gnu/asm/param.h:
-
-/usr/include/c++/11/queue:
-
-/usr/include/boost/type_traits/is_class.hpp:
-
-/usr/include/google/protobuf/generated_enum_util.h:
 
 /usr/include/linux/posix_types.h:
 
@@ -2713,25 +2750,15 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/google/protobuf/arena.h:
 
-/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/kvServer.h:
-
-/usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
-
 /usr/include/x86_64-linux-gnu/bits/waitflags.h:
 
 /usr/include/c++/11/bits/stl_multiset.h:
 
 /usr/include/boost/preprocessor/logical/compl.hpp:
 
-/usr/include/c++/11/bit:
-
-/usr/include/c++/11/bits/deque.tcc:
-
 /usr/include/wchar.h:
 
 /usr/include/boost/mpl/aux_/value_wknd.hpp:
-
-/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Raft/ApplyMsg.h:
 
 /usr/include/google/protobuf/repeated_field.h:
 
@@ -2742,6 +2769,10 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/throw_exception.hpp:
 
 /usr/include/boost/type_traits/is_volatile.hpp:
+
+/usr/include/boost/serialization/collections_save_imp.hpp:
+
+/usr/include/c++/11/bits/random.h:
 
 /usr/include/boost/noncopyable.hpp:
 
@@ -2756,10 +2787,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/c++/11/bits/functional_hash.h:
 
 /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
-
-/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Raft/raft.h:
-
-/usr/include/c++/11/cwctype:
 
 /usr/include/x86_64-linux-gnu/bits/types.h:
 
@@ -2795,8 +2822,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/type_traits/is_assignable.hpp:
 
-/usr/include/boost/archive/detail/iserializer.hpp:
-
 /usr/include/boost/mpl/aux_/config/eti.hpp:
 
 /usr/include/google/protobuf/stubs/macros.h:
@@ -2826,6 +2851,8 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
 
 /usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
+
+/usr/include/glog/logging.h:
 
 /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Clerk/clerk.h:
 
@@ -2877,8 +2904,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/x86_64-linux-gnu/bits/math-vector.h:
 
-/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/KvServer.cpp:
-
 /usr/include/google/protobuf/generated_message_reflection.h:
 
 /usr/include/google/protobuf/map_entry_lite.h:
@@ -2891,6 +2916,8 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/mpl/aux_/type_wrapper.hpp:
 
+/usr/include/inttypes.h:
+
 /usr/include/c++/11/bits/stl_function.h:
 
 /usr/include/boost/mpl/aux_/na_spec.hpp:
@@ -2898,12 +2925,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/c++/11/ext/atomicity.h:
 
 /usr/include/c++/11/bits/atomic_base.h:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
-
-/usr/include/google/protobuf/stubs/port.h:
-
-/usr/include/x86_64-linux-gnu/asm/types.h:
 
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
 
@@ -2916,6 +2937,10 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/preprocessor/comma_if.hpp:
 
 /usr/include/google/protobuf/map.h:
+
+/usr/include/asm-generic/errno-base.h:
+
+/usr/include/c++/11/unordered_set:
 
 /usr/include/boost/mpl/protect.hpp:
 
@@ -2965,14 +2990,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/version.hpp:
 
-/usr/include/c++/11/unordered_set:
-
-/usr/include/asm-generic/errno-base.h:
-
-/usr/include/asm-generic/types.h:
-
-/usr/include/boost/preprocessor/list/adt.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
 
 /usr/include/c++/11/numeric:
@@ -2997,17 +3014,19 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/c++/11/istream:
 
+/usr/include/endian.h:
+
+/usr/include/c++/11/bits/locale_classes.h:
+
+/usr/include/c++/11/deque:
+
 /usr/include/c++/11/bits/algorithmfwd.h:
 
 /usr/include/boost/checked_delete.hpp:
 
+/usr/include/glog/vlog_is_on.h:
+
 /usr/include/x86_64-linux-gnu/bits/sigstack.h:
-
-/usr/include/c++/11/bits/stl_multimap.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:
-
-/usr/include/linux/types.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
 
@@ -3081,8 +3100,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/arg.hpp:
 
-/usr/include/linux/falloc.h:
-
 /usr/include/c++/11/iterator:
 
 /usr/include/boost/mpl/aux_/template_arity_fwd.hpp:
@@ -3094,6 +3111,14 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/unistd.h:
 
 /usr/include/locale.h:
+
+/usr/include/c++/11/bits/unique_lock.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_statx.h:
+
+/usr/include/boost/serialization/extended_type_info.hpp:
+
+/usr/include/gflags/gflags.h:
 
 /usr/include/c++/11/iosfwd:
 
@@ -3169,6 +3194,12 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/mpl/aux_/msvc_eti_base.hpp:
 
+/usr/include/google/protobuf/stubs/mutex.h:
+
+/usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
+
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/kvServer.h:
+
 /usr/include/c++/11/bits/nested_exception.h:
 
 /usr/include/boost/preprocessor/arithmetic/dec.hpp:
@@ -3178,6 +3209,10 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/preprocessor/facilities/expand.hpp:
 
 /usr/include/c++/11/bits/alloc_traits.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
+
+/usr/include/gflags/gflags_gflags.h:
 
 /usr/include/boost/mpl/void.hpp:
 
@@ -3214,10 +3249,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/type_traits/is_virtual_base_of.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/getopt_posix.h:
-
-/usr/include/c++/11/bits/exception.h:
-
-/usr/include/boost/aligned_storage.hpp:
 
 /usr/include/errno.h:
 
@@ -3271,6 +3302,8 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/x86_64-linux-gnu/bits/types/stack_t.h:
 
+/usr/include/glog/log_severity.h:
+
 /usr/include/stdlib.h:
 
 /usr/include/x86_64-linux-gnu/bits/sigaction.h:
@@ -3313,19 +3346,35 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/c++/11/bits/cxxabi_init_exception.h:
 
-/usr/include/asm-generic/int-ll64.h:
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/KvServer.cpp:
 
-/usr/include/x86_64-linux-gnu/bits/statx-generic.h:
+/usr/include/c++/11/cwctype:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h:
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Raft/raft.h:
 
-/usr/include/boost/mpl/aux_/config/ttp.hpp:
+/usr/include/boost/type_traits/is_destructible.hpp:
 
-/usr/include/c++/11/bits/unique_lock.h:
+/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Raft/ApplyMsg.h:
 
-/usr/include/boost/serialization/extended_type_info.hpp:
+/usr/include/c++/11/condition_variable:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct_statx.h:
+/usr/include/c++/11/queue:
+
+/usr/include/boost/type_traits/is_class.hpp:
+
+/usr/include/c++/11/bit:
+
+/usr/include/c++/11/bits/deque.tcc:
+
+/usr/include/boost/serialization/detail/stack_constructor.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/fcntl.h:
+
+/usr/include/boost/archive/detail/iserializer.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/fcntl-linux.h:
+
+/usr/include/linux/falloc.h:
 
 /usr/include/c++/11/bits/std_thread.h:
 
@@ -3475,8 +3524,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/type_traits/is_void.hpp:
 
-/usr/include/boost/type_traits/is_enum.hpp:
-
 /usr/include/boost/type_traits/intrinsics.hpp:
 
 /usr/include/boost/type_traits/is_array.hpp:
@@ -3606,8 +3653,6 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/mpl/aux_/numeric_cast_utils.hpp:
 
 /usr/include/boost/smart_ptr/detail/sp_counted_base.hpp:
-
-/usr/include/boost/smart_ptr/detail/sp_has_gcc_intrinsics.hpp:
 
 /usr/include/boost/archive/basic_text_iprimitive.hpp:
 
@@ -3865,9 +3910,9 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/mpl/less.hpp:
 
-/usr/include/boost/mpl/aux_/preprocessed/gcc/less.hpp:
-
 /usr/include/boost/mpl/aux_/preprocessed/gcc/less_equal.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/less.hpp:
 
 /usr/include/boost/serialization/split_free.hpp:
 
@@ -3889,9 +3934,9 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 
 /usr/include/boost/serialization/array_wrapper.hpp:
 
-/usr/include/boost/smart_ptr/detail/sp_counted_base_gcc_atomic.hpp:
-
 /usr/include/boost/mpl/next_prior.hpp:
+
+/usr/include/boost/smart_ptr/detail/sp_counted_base_gcc_atomic.hpp:
 
 /usr/include/boost/config/detail/select_platform_config.hpp:
 
@@ -3942,13 +3987,3 @@ CMakeFiles/kvcore.dir/Raft/Raft.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_
 /usr/include/boost/serialization/string.hpp:
 
 /usr/include/boost/archive/detail/common_iarchive.hpp:
-
-/usr/include/boost/archive/detail/basic_iserializer.hpp:
-
-/usr/include/c++/11/bits/random.h:
-
-/usr/include/boost/serialization/collections_save_imp.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/fcntl.h:
-
-/usr/include/boost/serialization/detail/stack_constructor.hpp:

@@ -387,8 +387,45 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
   /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftRpcProtoc/raftRPC.pb.h \
   /usr/include/c++/11/thread \
   /usr/include/c++/11/bits/std_thread.h \
-  /usr/include/c++/11/bits/this_thread_sleep.h
+  /usr/include/c++/11/bits/this_thread_sleep.h \
+  /usr/include/glog/logging.h \
+  /usr/include/c++/11/sstream \
+  /usr/include/c++/11/bits/sstream.tcc \
+  /usr/include/inttypes.h \
+  /usr/include/gflags/gflags.h \
+  /usr/include/gflags/gflags_declare.h \
+  /usr/include/gflags/gflags_gflags.h \
+  /usr/include/glog/log_severity.h \
+  /usr/include/glog/vlog_is_on.h \
+  /usr/include/x86_64-linux-gnu/sys/stat.h \
+  /usr/include/x86_64-linux-gnu/bits/stat.h \
+  /usr/include/x86_64-linux-gnu/bits/struct_stat.h \
+  /usr/include/x86_64-linux-gnu/bits/statx.h \
+  /usr/include/linux/stat.h \
+  /usr/include/linux/types.h \
+  /usr/include/x86_64-linux-gnu/asm/types.h \
+  /usr/include/asm-generic/types.h \
+  /usr/include/asm-generic/int-ll64.h \
+  /usr/include/x86_64-linux-gnu/bits/statx-generic.h \
+  /usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h \
+  /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h
 
+
+/usr/include/asm-generic/int-ll64.h:
+
+/usr/include/x86_64-linux-gnu/asm/types.h:
+
+/usr/include/linux/stat.h:
+
+/usr/include/x86_64-linux-gnu/sys/stat.h:
+
+/usr/include/gflags/gflags_declare.h:
+
+/usr/include/inttypes.h:
+
+/usr/include/c++/11/bits/sstream.tcc:
+
+/usr/include/c++/11/sstream:
 
 /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftRpcProtoc/raftRPC.pb.h:
 
@@ -420,6 +457,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 
 /usr/include/google/protobuf/metadata_lite.h:
 
+/usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h:
+
 /usr/include/google/protobuf/message_lite.h:
 
 /usr/include/google/protobuf/generated_message_table_driven.h:
@@ -427,6 +466,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 /usr/include/google/protobuf/stubs/fastmem.h:
 
 /usr/include/google/protobuf/port.h:
+
+/usr/include/asm-generic/types.h:
 
 /usr/include/google/protobuf/stubs/hash.h:
 
@@ -476,6 +517,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 
 /usr/include/c++/11/bits/basic_ios.h:
 
+/usr/include/x86_64-linux-gnu/bits/statx-generic.h:
+
 /usr/include/c++/11/bits/streambuf.tcc:
 
 /usr/include/c++/11/bits/locale_classes.tcc:
@@ -491,6 +534,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 /usr/include/c++/11/bits/stl_algo.h:
 
 /usr/include/google/protobuf/port_undef.inc:
+
+/usr/include/x86_64-linux-gnu/bits/stat.h:
 
 /usr/include/byteswap.h:
 
@@ -511,6 +556,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 /usr/include/x86_64-linux-gnu/sys/ucontext.h:
 
 /usr/include/x86_64-linux-gnu/bits/sigcontext.h:
+
+/usr/include/linux/types.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
 
@@ -555,6 +602,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 /usr/include/c++/11/bits/streambuf_iterator.h:
 
 /usr/include/assert.h:
+
+/usr/include/gflags/gflags.h:
 
 /usr/include/google/protobuf/stubs/callback.h:
 
@@ -696,6 +745,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
+/usr/include/x86_64-linux-gnu/bits/statx.h:
+
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h:
@@ -737,6 +788,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 /usr/include/x86_64-linux-gnu/bits/sched.h:
 
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_statx.h:
 
 /usr/include/stdio.h:
 
@@ -842,6 +895,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h:
 
+/usr/include/gflags/gflags_gflags.h:
+
 /usr/include/c++/11/bits/stl_construct.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
@@ -849,6 +904,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
+
+/usr/include/glog/log_severity.h:
 
 /usr/include/x86_64-linux-gnu/bits/sigaction.h:
 
@@ -928,6 +985,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 
 /usr/include/c++/11/bits/hashtable_policy.h:
 
+/usr/include/x86_64-linux-gnu/bits/struct_stat.h:
+
 /usr/include/x86_64-linux-gnu/asm/posix_types_64.h:
 
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
@@ -949,6 +1008,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 /usr/include/x86_64-linux-gnu/bits/sigstack.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:
+
+/usr/include/glog/vlog_is_on.h:
 
 /usr/include/stdlib.h:
 
@@ -1125,6 +1186,8 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Ra
 /usr/include/x86_64-linux-gnu/sys/cdefs.h:
 
 /usr/include/c++/11/bits/unique_lock.h:
+
+/usr/include/glog/logging.h:
 
 /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Clerk/clerk.h:
 

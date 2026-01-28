@@ -61,7 +61,7 @@ void KvServer::Get(::google::protobuf::RpcController* controller,
                         KvServer::Get(request,response);
                         if(done)    done->Run();//按Protobuf规范，最后吊用回调
                     }
-void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetReply* reply){
+void KvServer::Get(const raftKVRpcProtoc::GetArgs* args, raftKVRpcProtoc::GetReply* reply){
     Op op;
     op.Operation="Get";
     op.Key=args->key();
@@ -69,78 +69,43 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args,raftKVRpcProtoc::GetRepl
     op.ClientId=args->clientid();
     op.RequestId=args->requestid();
 
-    int raftindex=-1;
-    bool isLeader=false;
-    m_raftNode->Start(op,&raftindex,&isLeader);//raftindex，raft预计的logIndex,虽然是预计，但是正确情况下，是准确的，op的具体内容对raft来说，是隔离的
-
+    // ⭐ 第一步：检查是否是 Leader
+    int raftState = -1;
+    bool isLeader = false;
+    m_raftNode->GetState(&raftState, &isLeader);
+    
     if (!isLeader) {
-    std::cout << "[Get] not leader, reply ErrWrongLeader, index=" << raftindex << std::endl;
-    reply->set_err(ErrWrongLeader);
-    return;
-}
-
-    //create waitForch
-    m_mtx.lock();
-    if(waitApplyCh.find(raftindex)==waitApplyCh.end()){
-        waitApplyCh.insert(std::make_pair(raftindex,new LockQueue<Op>()));
+        reply->set_err(ErrWrongLeader);
+        return;
     }
-
-    auto chForRaftIndex = waitApplyCh[raftindex];
-
-    m_mtx.unlock();
-
-    //超时了怎么做
-    Op raftCommitOp;
-
-     // 尝试从Raft提交通道中带超时获取已提交的日志
-        if (!chForRaftIndex->timeOutPop(CONSENSUS_TIMEOUT, &raftCommitOp)) {
-            // 分支1：Raft共识超时（未在超时时间内拿到提交确认）
-            int raftState = -1;  // 占位，Raft状态（follower/candidate/leader）
-            bool isLeader = false;
-            // 获取当前节点的Raft状态：判断是否是Leader
-            m_raftNode->GetState(&raftState, &isLeader);
-
-            // 关键判断：请求是重复的 + 当前节点是Leader
-            if (ifRequestDuplicate(op.ClientId, op.RequestId) && isLeader) {
-                // 逻辑：超时不代表日志没提交，只是集群没及时响应
-                // 但如果是重复的Get请求（已处理过），可安全重读（不违反线性一致性）
-                std::string Value;
-                bool exist = false;
-                // 直接在本地KV执行Get
-                ExecuteGetOpOnKVDB(op, &Value, &exist);
-                if (exist) {
-                    reply->set_err(OK);
-                    reply->set_value(Value);
-                } else {
-                    reply->set_err(ErrNoKey);
-                    reply->set_value("");
-                }
-            } else {
-                // 非重复请求/非Leader：返回WrongLeader，让客户端换节点重试
-                reply->set_err(ErrWrongLeader);
-            }
-        } else {
-            // 分支2：Raft日志已成功提交（超时前拿到了提交确认）
-            // 验证：确保提交的日志就是当前请求的日志（防串请求）
-            if (raftCommitOp.ClientId == op.ClientId && raftCommitOp.RequestId == op.RequestId) {
-                std::string Value;
-                bool exist = false;
-                // 执行Get操作（此时日志已提交，线性一致性有保障）
-                ExecuteGetOpOnKVDB(op, &Value, &exist);
-                if (exist) {
-                    reply->set_err(OK);
-                    reply->set_value(Value);
-                } else {
-                    reply->set_err(ErrNoKey);
-                    reply->set_value("");
-                }
-            } else {
-                // 异常情况：提交的日志和当前请求不匹配（理论上不会发生）
-                reply->set_err(ErrWrongLeader);
-            }
-        }
+    
+    // ⭐ 第二步：检查是否是重复请求
+    if (ifRequestDuplicate(op.ClientId, op.RequestId)) {
+        // 重复请求，直接返回缓存结果
+        auto& rec = m_lastRequests[op.ClientId];
+        reply->set_err(OK);
+        reply->set_value(rec.lastValue);
+        return;
+    }
+    
+    // ⭐ 第三步：直接读本地 KV 存储（不走 Raft！）
+    std::string value;
+    bool exist = false;
+    ExecuteGetOpOnKVDB(op, &value, &exist);
+    
+    if (exist) {
+        reply->set_err(OK);
+        reply->set_value(value);
+        // 记录结果供去重使用
+        recordRequestResult(op, value);
+    } else {
+        reply->set_err(ErrNoKey);
+        reply->set_value("");
+        recordRequestResult(op, "");
+    }
+    
+    // ⭐ 不再调用 m_raftNode->Start() ！
 }
-
 void KvServer::PutAppend(::google::protobuf::RpcController* controller,
                    const raftKVRpcProtoc::PutAppendArgs* request,
                    raftKVRpcProtoc::PutAppendReply* response,

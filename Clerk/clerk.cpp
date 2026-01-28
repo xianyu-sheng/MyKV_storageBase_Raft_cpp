@@ -2,14 +2,23 @@
 #include <fstream>
 #include <iostream>
 #include <unistd.h> 
+#include <glog/logging.h>
+#include <sys/stat.h>
 
 // 辅助函数：负责建立连接
 // 这里我们依然传 false (短连接模式)，但因为我们把对象存下来了，它实际上就是长连接！
 // 这样做可以避开你之前遇到的 keep_alive=true 的那个 bug。
 void Clerk::InitStub() {
-    // 每次创建时，让它去 ZK 查一次
-    channel_ = std::make_shared<KrpcChannel>(false); 
-    stub_ = std::make_shared<raftKVRpcProtoc::kvServerRpc_Stub>(channel_.get());
+    const int KMaxZkRetry =10;
+    int retry=0;
+    while(retry<KMaxZkRetry){
+        channel_=std::make_shared<KrpcChannel>(true);
+        stub_=std::make_shared<raftKVRpcProtoc::kvServerRpc_Stub>(channel_.get());
+        //验证是否能查到服务
+        //或者世界让channel先尝试连接 如果成功就返回
+        //简单方案先创建  如果第一次调用失败 说明ZK还没注册好
+        return;
+    }
 }
 
 void Clerk::Init(const std::string& configFile){
@@ -54,7 +63,7 @@ void Clerk::Put(const std::string& key, const std::string& value) {
             
             retry_count++;
             if (retry_count > kMaxRetry) {
-                 std::cerr << "Put RPC failed too many times! Give up." << std::endl;
+                 LOG(ERROR) << "Put RPC failed too many times! Give up.";
                  return; 
             }
             // 失败后休息一下，防止雪崩
@@ -73,12 +82,22 @@ void Clerk::Put(const std::string& key, const std::string& value) {
             // 找错 Leader 了。
             // 策略：虽然网络是通的，但为了保险起见，我们也可以重置连接，
             // 强制让 Channel 去 ZK 刷新一下最新的 Leader 是谁。
-            stub_ = nullptr; 
+            //这里不在置空stub_ 而是直接让他轮询下一个服务器 减少RPC的开销
+            SwitchToNextServer();
             usleep(50000); // 50ms 等待选举
             continue;
         }
         return;
     }
+}
+void Clerk::SwitchToNextServer(){
+    //关闭当前链接
+    if(channel_){
+        channel_->Reset();
+    }
+    //这里在销毁stub和Channel  强制下次重新查询ZK
+    stub_=nullptr;
+    channel_=nullptr;
 }
 
 std::string Clerk::Get(const std::string& key){
@@ -95,32 +114,6 @@ std::string Clerk::Get(const std::string& key){
         // 1. 检查连接
         if (!stub_) {
             InitStub();
-            
-            // --- 预热阶段 ---
-            {
-                KrpcController dummy_controller;
-                // 【修复1】：给预热请求也加上超时！
-                // 预热只是为了通连接，时间可以设短一点，比如 1000ms
-                dummy_controller.SetTimeout(1000); 
-
-                raftKVRpcProtoc::PutAppendArgs dummy_args;
-                dummy_args.set_key("ping");
-                dummy_args.set_value("warmup");
-                dummy_args.set_op("Put"); // 注意大小写，你之前写的 "put" 最好统一规范
-                dummy_args.set_clientid(std::to_string(ClientId_));
-                dummy_args.set_requestid(-1);
-
-                raftKVRpcProtoc::PutAppendReply dummy_reply;
-                stub_->PutAppend(&dummy_controller, &dummy_args, &dummy_reply, nullptr);
-
-                // 【修复2】：如果预热都超时/失败了，说明连接质量很差，不要继续发 Get 了
-                if (dummy_controller.Failed()) {
-                    // std::cerr << "Warmup failed: " << dummy_controller.ErrorText() << std::endl;
-                    stub_ = nullptr; // 销毁连接
-                    usleep(50000);   // 稍微休息
-                    continue;        // 直接进入下一次大循环重试
-                }
-            }
         }
         
         // --- 正式请求阶段 ---
@@ -156,7 +149,7 @@ std::string Clerk::Get(const std::string& key){
         }
         if(err == "ErrWrongLeader"){
             // 选错 Leader -> 销毁连接，重新去 ZK 查
-            stub_ = nullptr;
+            SwitchToNextServer();
             usleep(100000);
             continue;
         }

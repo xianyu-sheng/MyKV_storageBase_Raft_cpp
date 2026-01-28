@@ -1,0 +1,14 @@
+Log file created at: 2026/01/28 17:20:16
+Running on machine: xianyusheng-virtual-machine
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I0128 17:20:16.254911 210708 ZooKeeper.cc:60] zookeeper init success
+I0128 17:20:16.260473 210709 KrpcChannel.cc:141] connect success
+I0128 17:20:16.261772 210710 KrpcChannel.cc:141] connect success
+I0128 17:20:16.261806 210711 KrpcChannel.cc:141] connect success
+I0128 17:20:16.262123 210708 KrpcChannel.cc:141] connect success
+I0128 17:20:16.312902 210711 KrpcChannel.cc:141] connect success
+I0128 17:20:16.313180 210710 KrpcChannel.cc:141] connect success
+I0128 17:20:16.374778 210710 KrpcChannel.cc:141] connect success
+I0128 17:20:16.374786 210711 KrpcChannel.cc:141] connect success
+I0128 17:20:16.427186 210710 KrpcChannel.cc:141] connect success
+I0128 17:20:16.478595 210710 KrpcChannel.cc:141] connect success

@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <numeric>
 #include <cstdlib>
+#include <glog/logging.h>
+#include <sys/stat.h>
 
 
 
@@ -51,9 +53,6 @@ void run_benchmark(int totalOps,
                 std::string key=random_key(keySpace,gen);
                 bool doWrite=opDist(gen) < writeRatio;
                 auto t1=Clock::now();
-                if ((j + 1) % 50 == 0 && i == 0) {
-                    std::cout << "progress: " << (j + 1) << "/" << opsPerThread << std::endl;
-                }
                 if(doWrite){
                     std::string val=random_value(valueSize,gen);
                     clerk.Put(key,val);
@@ -95,7 +94,45 @@ void run_benchmark(int totalOps,
     std::cout << "p99 延迟: " << p99 / 1000.0 << " ms\n";
 }
 int main(int argc,char** argv){
-    
+    // ===== 新增：glog 初始化 (在 KrpcApplication::Init 之前) =====
+    // 1. 创建日志目录
+    mkdir("log", 0777);
+
+    // 2. 初始化 glog - 必须在其他 google 库之前
+    google::InitGoogleLogging(argv[0]);
+
+    //3.先解析参数
+    for(int i=1;i<argc;i++){
+        if(std::string(argv[i])=="--bench"){
+            benchMode=true;
+            break;
+        }
+    }
+
+    //4.根据模式设置日志级别
+    if(benchMode){
+        // 压测模式：只记录 ERROR 及以上级别，减少日志量
+        FLAGS_minloglevel = 2; // 0=INFO, 1=WARNING, 2=ERROR, 3=FATAL
+        FLAGS_logtostderr=false;//不输出到终端
+         std::cout << "压测模式：日志级别设置为ERROR，减少I/O开销" << std::endl;
+    }else{
+        //普通模式，输出所有日志
+        FLAGS_minloglevel=0;
+        FLAGS_logtostderr=false;
+    }
+
+    FLAGS_alsologtostderr = false;      // 不同时输出到文件和 stderr
+
+    // 4. 设置日志目录
+    FLAGS_log_dir = "./log";
+
+     // 5. 设置日志级别（0=INFO, 1=WARNING, 2=ERROR, 3=FATAL）
+    FLAGS_minloglevel = 0;
+
+    // 6. 设置每个日志文件最大大小（单位：MB），防止日志无限增长
+    FLAGS_max_log_size = 100;
+
+
     //1.初始化myRPC框架，读取conf/myrpc.conf  这里只是读取-i参数 
     KrpcApplication::Init(argc,argv);
     //在后面添加参数解析
