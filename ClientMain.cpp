@@ -114,7 +114,7 @@ int main(int argc,char** argv){
         // 压测模式：只记录 ERROR 及以上级别，减少日志量
         FLAGS_minloglevel = 2; // 0=INFO, 1=WARNING, 2=ERROR, 3=FATAL
         FLAGS_logtostderr=false;//不输出到终端
-         std::cout << "压测模式：日志级别设置为ERROR，减少I/O开销" << std::endl;
+        //std::cout << "压测模式：日志级别设置为ERROR，减少I/O开销" << std::endl;
     }else{
         //普通模式，输出所有日志
         FLAGS_minloglevel=0;
@@ -125,9 +125,6 @@ int main(int argc,char** argv){
 
     // 4. 设置日志目录
     FLAGS_log_dir = "./log";
-
-     // 5. 设置日志级别（0=INFO, 1=WARNING, 2=ERROR, 3=FATAL）
-    FLAGS_minloglevel = 0;
 
     // 6. 设置每个日志文件最大大小（单位：MB），防止日志无限增长
     FLAGS_max_log_size = 100;
