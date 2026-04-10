@@ -62,11 +62,27 @@ message InstallSnapshotRequest{
 message InstallSnapshotResponse{
     int32 Term=1;
 }
+
+// ==================== ReadIndex 优化 ====================
+// ReadIndex 请求：Follower -> Leader，询问当前是否是合法 Leader
+message ReadIndexRequest {
+    int32 ServerId = 1;           // 请求来源的服务器ID
+}
+
+// ReadIndex 响应：Leader 返回确认信息
+message ReadIndexResponse {
+    int32 Term = 1;              // Leader 的当前 term
+    int32 CommitIndex = 2;       // Leader 的 commitIndex（用于线性安全读）
+    bool IsLeader = 3;           // 是否确认是 Leader
+}
+// ======================================================
+
 //只有Raft节点之间才会涉及RPC通信
 service raftRpc{
     rpc AppendEntries(AppendEntriesArgs) returns (AppendEntriesReply);
     rpc RequestVote(RequestVoteArgs) returns (RequestVoteReply);
     rpc InstallSnapshot(InstallSnapshotRequest) returns (InstallSnapshotResponse);
     rpc PreRequestVote(PreRequestVoteArgs) returns (PreRequestVoteReply); // 新增预选举 RPC
+    rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse);           // ReadIndex 优化读
 }
 

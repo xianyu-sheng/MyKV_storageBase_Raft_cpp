@@ -48,7 +48,7 @@ struct TableStruct_raftRPC_2eproto {
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
   static const ::PROTOBUF_NAMESPACE_ID::internal::AuxillaryParseTableField aux[]
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
-  static const ::PROTOBUF_NAMESPACE_ID::internal::ParseTable schema[9]
+  static const ::PROTOBUF_NAMESPACE_ID::internal::ParseTable schema[11]
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
   static const ::PROTOBUF_NAMESPACE_ID::internal::FieldMetadata field_metadata[];
   static const ::PROTOBUF_NAMESPACE_ID::internal::SerializationTable serialization_table[];
@@ -77,6 +77,12 @@ extern PreRequestVoteArgsDefaultTypeInternal _PreRequestVoteArgs_default_instanc
 class PreRequestVoteReply;
 class PreRequestVoteReplyDefaultTypeInternal;
 extern PreRequestVoteReplyDefaultTypeInternal _PreRequestVoteReply_default_instance_;
+class ReadIndexRequest;
+class ReadIndexRequestDefaultTypeInternal;
+extern ReadIndexRequestDefaultTypeInternal _ReadIndexRequest_default_instance_;
+class ReadIndexResponse;
+class ReadIndexResponseDefaultTypeInternal;
+extern ReadIndexResponseDefaultTypeInternal _ReadIndexResponse_default_instance_;
 class RequestVoteArgs;
 class RequestVoteArgsDefaultTypeInternal;
 extern RequestVoteArgsDefaultTypeInternal _RequestVoteArgs_default_instance_;
@@ -92,6 +98,8 @@ template<> ::raftRpcProtoc::InstallSnapshotResponse* Arena::CreateMaybeMessage<:
 template<> ::raftRpcProtoc::LogEntry* Arena::CreateMaybeMessage<::raftRpcProtoc::LogEntry>(Arena*);
 template<> ::raftRpcProtoc::PreRequestVoteArgs* Arena::CreateMaybeMessage<::raftRpcProtoc::PreRequestVoteArgs>(Arena*);
 template<> ::raftRpcProtoc::PreRequestVoteReply* Arena::CreateMaybeMessage<::raftRpcProtoc::PreRequestVoteReply>(Arena*);
+template<> ::raftRpcProtoc::ReadIndexRequest* Arena::CreateMaybeMessage<::raftRpcProtoc::ReadIndexRequest>(Arena*);
+template<> ::raftRpcProtoc::ReadIndexResponse* Arena::CreateMaybeMessage<::raftRpcProtoc::ReadIndexResponse>(Arena*);
 template<> ::raftRpcProtoc::RequestVoteArgs* Arena::CreateMaybeMessage<::raftRpcProtoc::RequestVoteArgs>(Arena*);
 template<> ::raftRpcProtoc::RequestVoteReply* Arena::CreateMaybeMessage<::raftRpcProtoc::RequestVoteReply>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
@@ -1624,6 +1632,302 @@ class InstallSnapshotResponse PROTOBUF_FINAL :
   mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_raftRPC_2eproto;
 };
+// -------------------------------------------------------------------
+
+class ReadIndexRequest PROTOBUF_FINAL :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:raftRpcProtoc.ReadIndexRequest) */ {
+ public:
+  inline ReadIndexRequest() : ReadIndexRequest(nullptr) {};
+  virtual ~ReadIndexRequest();
+
+  ReadIndexRequest(const ReadIndexRequest& from);
+  ReadIndexRequest(ReadIndexRequest&& from) noexcept
+    : ReadIndexRequest() {
+    *this = ::std::move(from);
+  }
+
+  inline ReadIndexRequest& operator=(const ReadIndexRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ReadIndexRequest& operator=(ReadIndexRequest&& from) noexcept {
+    if (GetArena() == from.GetArena()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
+  static const ReadIndexRequest& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const ReadIndexRequest* internal_default_instance() {
+    return reinterpret_cast<const ReadIndexRequest*>(
+               &_ReadIndexRequest_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    9;
+
+  friend void swap(ReadIndexRequest& a, ReadIndexRequest& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(ReadIndexRequest* other) {
+    if (other == this) return;
+    if (GetArena() == other->GetArena()) {
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ReadIndexRequest* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline ReadIndexRequest* New() const final {
+    return CreateMaybeMessage<ReadIndexRequest>(nullptr);
+  }
+
+  ReadIndexRequest* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
+    return CreateMaybeMessage<ReadIndexRequest>(arena);
+  }
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void CopyFrom(const ReadIndexRequest& from);
+  void MergeFrom(const ReadIndexRequest& from);
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
+      ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  inline void SharedCtor();
+  inline void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(ReadIndexRequest* other);
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "raftRpcProtoc.ReadIndexRequest";
+  }
+  protected:
+  explicit ReadIndexRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  private:
+  static void ArenaDtor(void* object);
+  inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&::descriptor_table_raftRPC_2eproto);
+    return ::descriptor_table_raftRPC_2eproto.file_level_metadata[kIndexInFileMessages];
+  }
+
+  public:
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kServerIdFieldNumber = 1,
+  };
+  // int32 ServerId = 1;
+  void clear_serverid();
+  ::PROTOBUF_NAMESPACE_ID::int32 serverid() const;
+  void set_serverid(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_serverid() const;
+  void _internal_set_serverid(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:raftRpcProtoc.ReadIndexRequest)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  ::PROTOBUF_NAMESPACE_ID::int32 serverid_;
+  mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  friend struct ::TableStruct_raftRPC_2eproto;
+};
+// -------------------------------------------------------------------
+
+class ReadIndexResponse PROTOBUF_FINAL :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:raftRpcProtoc.ReadIndexResponse) */ {
+ public:
+  inline ReadIndexResponse() : ReadIndexResponse(nullptr) {};
+  virtual ~ReadIndexResponse();
+
+  ReadIndexResponse(const ReadIndexResponse& from);
+  ReadIndexResponse(ReadIndexResponse&& from) noexcept
+    : ReadIndexResponse() {
+    *this = ::std::move(from);
+  }
+
+  inline ReadIndexResponse& operator=(const ReadIndexResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ReadIndexResponse& operator=(ReadIndexResponse&& from) noexcept {
+    if (GetArena() == from.GetArena()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
+  static const ReadIndexResponse& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const ReadIndexResponse* internal_default_instance() {
+    return reinterpret_cast<const ReadIndexResponse*>(
+               &_ReadIndexResponse_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    10;
+
+  friend void swap(ReadIndexResponse& a, ReadIndexResponse& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(ReadIndexResponse* other) {
+    if (other == this) return;
+    if (GetArena() == other->GetArena()) {
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ReadIndexResponse* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline ReadIndexResponse* New() const final {
+    return CreateMaybeMessage<ReadIndexResponse>(nullptr);
+  }
+
+  ReadIndexResponse* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
+    return CreateMaybeMessage<ReadIndexResponse>(arena);
+  }
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void CopyFrom(const ReadIndexResponse& from);
+  void MergeFrom(const ReadIndexResponse& from);
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
+      ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  inline void SharedCtor();
+  inline void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(ReadIndexResponse* other);
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "raftRpcProtoc.ReadIndexResponse";
+  }
+  protected:
+  explicit ReadIndexResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  private:
+  static void ArenaDtor(void* object);
+  inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&::descriptor_table_raftRPC_2eproto);
+    return ::descriptor_table_raftRPC_2eproto.file_level_metadata[kIndexInFileMessages];
+  }
+
+  public:
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kTermFieldNumber = 1,
+    kCommitIndexFieldNumber = 2,
+    kIsLeaderFieldNumber = 3,
+  };
+  // int32 Term = 1;
+  void clear_term();
+  ::PROTOBUF_NAMESPACE_ID::int32 term() const;
+  void set_term(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_term() const;
+  void _internal_set_term(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // int32 CommitIndex = 2;
+  void clear_commitindex();
+  ::PROTOBUF_NAMESPACE_ID::int32 commitindex() const;
+  void set_commitindex(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_commitindex() const;
+  void _internal_set_commitindex(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // bool IsLeader = 3;
+  void clear_isleader();
+  bool isleader() const;
+  void set_isleader(bool value);
+  private:
+  bool _internal_isleader() const;
+  void _internal_set_isleader(bool value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:raftRpcProtoc.ReadIndexResponse)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  ::PROTOBUF_NAMESPACE_ID::int32 term_;
+  ::PROTOBUF_NAMESPACE_ID::int32 commitindex_;
+  bool isleader_;
+  mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  friend struct ::TableStruct_raftRPC_2eproto;
+};
 // ===================================================================
 
 class raftRpc_Stub;
@@ -1654,6 +1958,10 @@ class raftRpc : public ::PROTOBUF_NAMESPACE_ID::Service {
   virtual void PreRequestVote(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::raftRpcProtoc::PreRequestVoteArgs* request,
                        ::raftRpcProtoc::PreRequestVoteReply* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ReadIndex(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::raftRpcProtoc::ReadIndexRequest* request,
+                       ::raftRpcProtoc::ReadIndexResponse* response,
                        ::google::protobuf::Closure* done);
 
   // implements Service ----------------------------------------------
@@ -1699,6 +2007,10 @@ class raftRpc_Stub : public raftRpc {
   void PreRequestVote(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::raftRpcProtoc::PreRequestVoteArgs* request,
                        ::raftRpcProtoc::PreRequestVoteReply* response,
+                       ::google::protobuf::Closure* done);
+  void ReadIndex(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::raftRpcProtoc::ReadIndexRequest* request,
+                       ::raftRpcProtoc::ReadIndexResponse* response,
                        ::google::protobuf::Closure* done);
  private:
   ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
@@ -2531,9 +2843,101 @@ inline void InstallSnapshotResponse::set_term(::PROTOBUF_NAMESPACE_ID::int32 val
   // @@protoc_insertion_point(field_set:raftRpcProtoc.InstallSnapshotResponse.Term)
 }
 
+// -------------------------------------------------------------------
+
+// ReadIndexRequest
+
+// int32 ServerId = 1;
+inline void ReadIndexRequest::clear_serverid() {
+  serverid_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 ReadIndexRequest::_internal_serverid() const {
+  return serverid_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 ReadIndexRequest::serverid() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtoc.ReadIndexRequest.ServerId)
+  return _internal_serverid();
+}
+inline void ReadIndexRequest::_internal_set_serverid(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  serverid_ = value;
+}
+inline void ReadIndexRequest::set_serverid(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_serverid(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtoc.ReadIndexRequest.ServerId)
+}
+
+// -------------------------------------------------------------------
+
+// ReadIndexResponse
+
+// int32 Term = 1;
+inline void ReadIndexResponse::clear_term() {
+  term_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 ReadIndexResponse::_internal_term() const {
+  return term_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 ReadIndexResponse::term() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtoc.ReadIndexResponse.Term)
+  return _internal_term();
+}
+inline void ReadIndexResponse::_internal_set_term(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  term_ = value;
+}
+inline void ReadIndexResponse::set_term(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_term(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtoc.ReadIndexResponse.Term)
+}
+
+// int32 CommitIndex = 2;
+inline void ReadIndexResponse::clear_commitindex() {
+  commitindex_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 ReadIndexResponse::_internal_commitindex() const {
+  return commitindex_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 ReadIndexResponse::commitindex() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtoc.ReadIndexResponse.CommitIndex)
+  return _internal_commitindex();
+}
+inline void ReadIndexResponse::_internal_set_commitindex(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  commitindex_ = value;
+}
+inline void ReadIndexResponse::set_commitindex(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_commitindex(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtoc.ReadIndexResponse.CommitIndex)
+}
+
+// bool IsLeader = 3;
+inline void ReadIndexResponse::clear_isleader() {
+  isleader_ = false;
+}
+inline bool ReadIndexResponse::_internal_isleader() const {
+  return isleader_;
+}
+inline bool ReadIndexResponse::isleader() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtoc.ReadIndexResponse.IsLeader)
+  return _internal_isleader();
+}
+inline void ReadIndexResponse::_internal_set_isleader(bool value) {
+  
+  isleader_ = value;
+}
+inline void ReadIndexResponse::set_isleader(bool value) {
+  _internal_set_isleader(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtoc.ReadIndexResponse.IsLeader)
+}
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

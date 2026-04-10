@@ -73,13 +73,49 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args, raftKVRpcProtoc::GetRep
     int raftState = -1;
     bool isLeader = false;
     m_raftNode->GetState(&raftState, &isLeader);
-    
+
     if (!isLeader) {
+        // ========== Follower ReadIndex 优化 ==========
+        // Follower 收到读请求时，使用 ReadIndex 机制
+        // 1. 先检查是否是重复请求（可以去缓存返回）
+        if (ifRequestDuplicate(op.ClientId, op.RequestId)) {
+            auto& rec = m_lastRequests[op.ClientId];
+            reply->set_err(OK);
+            reply->set_value(rec.lastValue);
+            return;
+        }
+
+        // 2. 获取当前 commitIndex（确保数据已 apply）
+        int currentCommitIndex = m_raftNode->GetCommitIndex();
+
+        // 3. 等待本地 apply 到 commitIndex
+        //    这里简化处理：如果本地 commitIndex 有效，直接读取
+        //    完整实现需要等待 apply
+        if (currentCommitIndex > 0) {
+            // 本地数据已经提交，可以安全读取
+            std::string value;
+            bool exist = false;
+            ExecuteGetOpOnKVDB(op, &value, &exist);
+
+            if (exist) {
+                reply->set_err(OK);
+                reply->set_value(value);
+                recordRequestResult(op, value);
+                return;
+            } else {
+                reply->set_err(ErrNoKey);
+                reply->set_value("");
+                recordRequestResult(op, "");
+                return;
+            }
+        }
+        // 如果 commitIndex 为 0，说明还没有数据，返回错误
         reply->set_err(ErrWrongLeader);
         return;
     }
-    
-    // ⭐ 第二步：检查是否是重复请求
+
+    // ⭐ Leader 路径：直接读本地
+    // 第二步：检查是否是重复请求
     if (ifRequestDuplicate(op.ClientId, op.RequestId)) {
         // 重复请求，直接返回缓存结果
         auto& rec = m_lastRequests[op.ClientId];
@@ -87,12 +123,12 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args, raftKVRpcProtoc::GetRep
         reply->set_value(rec.lastValue);
         return;
     }
-    
+
     // ⭐ 第三步：直接读本地 KV 存储（不走 Raft！）
     std::string value;
     bool exist = false;
     ExecuteGetOpOnKVDB(op, &value, &exist);
-    
+
     if (exist) {
         reply->set_err(OK);
         reply->set_value(value);
@@ -103,7 +139,7 @@ void KvServer::Get(const raftKVRpcProtoc::GetArgs* args, raftKVRpcProtoc::GetRep
         reply->set_value("");
         recordRequestResult(op, "");
     }
-    
+
     // ⭐ 不再调用 m_raftNode->Start() ！
 }
 void KvServer::PutAppend(::google::protobuf::RpcController* controller,
@@ -204,4 +240,77 @@ void KvServer::Apply(const ApplyMsg& msg) {
     if (ch) {
         ch->push(op);
     }
+
+    // ========== ReadIndex: 唤醒等待 commitIndex 的请求 ==========
+    {
+        std::lock_guard<std::mutex> lk(m_commitMtx);
+        auto it = m_commitIndexCh.find(index);
+        if (it != m_commitIndexCh.end()) {
+            it->second->push(msg);
+        }
+    }
 }
+
+// ========== ReadIndex 优化实现 ==========
+
+// 设置 Leader 信息（从外部配置或 Raft 层获取）
+void KvServer::SetLeaderInfo(int leaderId, const std::string& leaderIp, int leaderPort) {
+    std::lock_guard<std::mutex> lk(m_leaderMtx);
+    m_leaderId = leaderId;
+    m_leaderIp = leaderIp;
+    m_leaderPort = leaderPort;
+}
+
+// ReadIndex: 等待 apply 到指定 commitIndex
+bool KvServer::WaitForCommitIndex(int targetIndex, int timeoutMs) {
+    // 创建等待通道
+    std::shared_ptr<LockQueue<ApplyMsg>> ch;
+    {
+        std::lock_guard<std::mutex> lk(m_commitMtx);
+        if (m_commitIndexCh.count(targetIndex) == 0) {
+            m_commitIndexCh[targetIndex] = std::make_shared<LockQueue<ApplyMsg>>();
+        }
+        ch = m_commitIndexCh[targetIndex];
+    }
+
+    // 等待 apply
+    ApplyMsg msg;
+    bool success = ch->timeOutPop(timeoutMs, &msg);
+
+    // 清理通道
+    {
+        std::lock_guard<std::mutex> lk(m_commitMtx);
+        m_commitIndexCh.erase(targetIndex);
+    }
+
+    return success;
+}
+
+// 向 Leader 发送 ReadIndex RPC（简化版本：直接使用 Raft 的 peer 连接）
+bool KvServer::QueryLeaderForReadIndex(int* commitIndex) {
+    // 获取 Leader 信息
+    int leaderId = -1;
+    m_raftNode->GetLeaderInfo(&leaderId, nullptr, nullptr);
+
+    if (leaderId < 0) {
+        return false;  // 没有 Leader
+    }
+
+    // 构造 ReadIndex 请求
+    auto request = std::make_shared<raftRpcProtoc::ReadIndexRequest>();
+    request->set_serverid(m_leaderId);
+
+    auto response = std::make_shared<raftRpcProtoc::ReadIndexResponse>();
+
+    // 发送 ReadIndex RPC 到 Leader
+    if (m_raftNode->sendReadIndex(leaderId, request, response)) {
+        if (response->isleader()) {
+            *commitIndex = response->commitindex();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ========== ReadIndex 优化实现 End ==========

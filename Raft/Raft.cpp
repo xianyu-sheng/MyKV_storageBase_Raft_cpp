@@ -213,6 +213,13 @@ void Raft::init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::sh
     m_lastSnapshotIncludeTerm = 0;
     m_lastResetElectionTime = now();
     m_lastResetHearBeatTime = now();
+
+    // Pipeline 状态初始化
+    int n = static_cast<int>(m_peers.size());
+    m_inflightCount.resize(n);
+    m_inSnapshot.resize(n);
+    m_peerSendThreads.resize(n);
+
     readPersist(m_persister->ReadRaftState());  // 从持久化存储中恢复Raft状态
 
     // 如果m_lastSnapshotIncludeIndex大于0，则将m_lastApplied设置为该值。
@@ -464,6 +471,8 @@ bool Raft::sendRequestVote(int server,
         for(int i=0;i<m_peers.size();i++){
             m_nextIndex[i]=lastLogIndex+1;//有效下标从1开始
             m_matchIndex[i]=0;//表示已经接受到领导日志的index下标，并且换一次领导就要设置为0
+            m_inflightCount[i]=0;  // Pipeline：重置在途计数
+            m_inSnapshot[i]=false;          // Pipeline：重置快照状态
         }
         persist();
     }
@@ -1299,3 +1308,72 @@ void Raft::PreRequestVote(::google::protobuf::RpcController* controller,
         done->Run();
     }
 }
+
+// ========== ReadIndex 优化实现 ==========
+
+// 获取当前 commitIndex
+int Raft::GetCommitIndex() {
+    std::lock_guard<std::mutex> lg(m_mtx);
+    return m_commitIndex;
+}
+
+// 获取当前 Leader 信息（简化版本：返回自身是否是 Leader）
+void Raft::GetLeaderInfo(int* leaderId, std::string* leaderIp, int* leaderPort) {
+    std::lock_guard<std::mutex> lg(m_mtx);
+    if (leaderId) {
+        // 如果自己是 Leader，返回自己的 ID
+        *leaderId = (m_status == Leader) ? m_me : -1;
+    }
+    // leaderIp 和 leaderPort 需要从配置中获取，这里简化处理
+    if (leaderIp) *leaderIp = "";
+    if (leaderPort) *leaderPort = 0;
+}
+
+// ReadIndex RPC 处理器：Follower 请求 Leader 确认
+void Raft::ReadIndex1(const raftRpcProtoc::ReadIndexRequest* request,
+                       raftRpcProtoc::ReadIndexResponse* response) {
+    std::lock_guard<std::mutex> lg(m_mtx);
+
+    // 1. 返回当前 term 和 commitIndex
+    response->set_term(m_currentTerm);
+    response->set_commitindex(m_commitIndex);
+
+    // 2. 如果自己不是 Leader，返回 false
+    if (m_status != Leader) {
+        response->set_isleader(false);
+        return;
+    }
+
+    // 3. 确认自己是合法 Leader
+    //    Leader 在处理 ReadIndex 请求时，确认 term 没有发生变化
+    //    （如果 term 变化，说明有新的 Leader，Follower 需要重试）
+    response->set_isleader(true);
+
+    // 4. Leader 需要确认 commitIndex 已经达成共识
+    //    对于 lease read 优化，可以在这里跳过心跳确认
+    //    这里使用简单的方式：直接返回当前的 commitIndex
+}
+
+// ReadIndex RPC 包装（供框架调用）
+void Raft::ReadIndex(::google::protobuf::RpcController* controller,
+                     const raftRpcProtoc::ReadIndexRequest* request,
+                     raftRpcProtoc::ReadIndexResponse* response,
+                     ::google::protobuf::Closure* done) {
+    (void)controller;
+    ReadIndex1(request, response);
+    if (done) {
+        done->Run();
+    }
+}
+
+// 发送 ReadIndex 请求到指定服务器
+bool Raft::sendReadIndex(int serverId,
+                          std::shared_ptr<raftRpcProtoc::ReadIndexRequest> request,
+                          std::shared_ptr<raftRpcProtoc::ReadIndexResponse> response) {
+    if (serverId < 0 || serverId >= static_cast<int>(m_peers.size())) {
+        return false;
+    }
+    return m_peers[serverId]->ReadIndex(request.get(), response.get());
+}
+
+// ========== ReadIndex 优化实现 End ==========

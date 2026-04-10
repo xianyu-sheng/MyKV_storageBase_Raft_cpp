@@ -48,12 +48,27 @@ class KvServer:public raftKVRpcProtoc::kvServerRpc{
     //提供给Raft的入口，Raft在apply日志时，调用这个接口吧ApplyMsg推给KvServer
     void Apply(const ApplyMsg& msg);
 
+    // ========== ReadIndex 优化 ==========
+    // 设置 Leader 信息（从 Raft 层同步过来）
+    void SetLeaderInfo(int leaderId, const std::string& leaderIp, int leaderPort);
+    // 获取当前的 commitIndex（用于 ReadIndex 等待）
+    int GetCommitIndex() { return m_raftNode->GetCommitIndex(); }
+    // ========== ReadIndex End ==========
+
     private:
     //内部的辅助函数
     void ExecuteGetOpOnKVDB(const Op& op,std::string* value,bool* exist);
     void ExecutePutAppendOnKVDB(const Op& op);
     bool ifRequestDuplicate(const std::string& clientId,int requestId);
     void recordRequestResult(const Op& op,const std::string& lastValue);
+
+    // ========== ReadIndex 优化 ==========
+    // ReadIndex: 等待 apply 到指定 commitIndex
+    bool WaitForCommitIndex(int targetIndex, int timeoutMs);
+    // 向 Leader 发送 ReadIndex RPC
+    bool QueryLeaderForReadIndex(int* commitIndex);
+    // ========== ReadIndex End ==========
+
     private:
     // === 和 Raft 通信 ===
     std::shared_ptr<Raft> m_raftNode;
@@ -68,4 +83,15 @@ class KvServer:public raftKVRpcProtoc::kvServerRpc{
         std::string lastValue;  // 对 Get/Put/Append 的上次返回值
     };
     std::unordered_map<std::string, RequestRecord> m_lastRequests; // key: ClientId
+
+    // ========== ReadIndex 优化 ==========
+    // 等待 commitIndex 的通道
+    std::map<int, std::shared_ptr<LockQueue<ApplyMsg>>> m_commitIndexCh;
+    std::mutex m_commitMtx;
+    // Leader 信息（用于 Follower 向 Leader 发送 ReadIndex）
+    std::string m_leaderIp;
+    int m_leaderPort;
+    int m_leaderId;
+    std::mutex m_leaderMtx;
+    // ========== ReadIndex End ==========
 };

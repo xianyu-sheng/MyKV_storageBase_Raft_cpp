@@ -261,9 +261,12 @@ class RaftRpcUtil {
   virtual bool RequestVote(const raftRpcProtoc::RequestVoteArgs* args,
                            raftRpcProtoc::RequestVoteReply* reply) = 0;
   virtual bool PreRequestVote(const raftRpcProtoc::PreRequestVoteArgs* args,
-                              raftRpcProtoc::PreRequestVoteReply* reply) = 0;
+                               raftRpcProtoc::PreRequestVoteReply* reply) = 0;
   virtual bool InstallSnapshot(const raftRpcProtoc::InstallSnapshotRequest* request,
-                               raftRpcProtoc::InstallSnapshotResponse* response) = 0;
+                                raftRpcProtoc::InstallSnapshotResponse* response) = 0;
+  // ========== ReadIndex ==========
+  virtual bool ReadIndex(const raftRpcProtoc::ReadIndexRequest* request,
+                         raftRpcProtoc::ReadIndexResponse* response) = 0;
 };
 class KrpcRaftRpcClient : public RaftRpcUtil{
     public:
@@ -320,6 +323,21 @@ class KrpcRaftRpcClient : public RaftRpcUtil{
           }
           return true;
       }
+
+      // ========== ReadIndex ==========
+      bool ReadIndex(const raftRpcProtoc::ReadIndexRequest* request,
+                     raftRpcProtoc::ReadIndexResponse* response) override {
+          std::lock_guard<std::mutex> lk(m_mtx);
+          raftRpcProtoc::raftRpc_Stub stub(m_channel.get());
+          KrpcController controller;
+          controller.SetTimeout(3000);  // 3秒超时
+          stub.ReadIndex(&controller, request, response, nullptr);
+          if (controller.Failed()) {
+              return false;
+          }
+          return true;
+      }
+      // ========== ReadIndex End ==========
 
     private:
       std::string m_ip;
@@ -392,6 +410,17 @@ private:
     int m_lastSnapshotIncludeIndex;
     int m_lastSnapshotIncludeTerm;
 
+    // ==================== Pipeline 复制优化 ====================
+    // 每个 peer 的 pipeline 状态（索引对应 peerId）
+    std::vector<int> m_inflightCount;                // 每个 peer 在途 AE 数（m_mtx 保护）
+    std::vector<bool> m_inSnapshot;                  // 每个 peer 是否在发送快照（快照期间阻塞 pipeline）
+    std::vector<std::thread> m_peerSendThreads;       // 每个 peer 的专属发送线程
+
+    // Pipeline 配置参数（可以按需调整）
+    static constexpr int PIPELINE_BATCH_SIZE = 8;       // 每批发送的日志条目上限
+    static constexpr int PIPELINE_MAX_INFLIGHT = 16;   // 每个 peer 最大并行在途请求数
+    // ========================================================
+
     public:
         void AppendEntries1(const raftRpcProtoc::AppendEntriesArgs* args,
                             raftRpcProtoc::AppendEntriesReply* reply);//日志同步+心跳
@@ -455,17 +484,18 @@ private:
           int me,
           std::shared_ptr<Persister> persist,
           std::shared_ptr<LockQueue<ApplyMsg>> applyCh);
-        bool callAppendEntriesRpc(int peerId, 
+        bool callAppendEntriesRpc(int peerId,
                              std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
                              std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply);
         bool handleTermMismatch(int peerId, int replyTerm);
         bool isStillLeader();
         void handleLogMismatch(int peerId, std::shared_ptr<raftRpcProtoc::AppendEntriesReply> reply);
-        void updatePeerSyncState(int peerId, 
+        void updatePeerSyncState(int peerId,
                                 std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
                                 std::shared_ptr<int> appendNums);
         void tryUpdateCommitIndex(std::shared_ptr<raftRpcProtoc::AppendEntriesArgs> args,
                                 std::shared_ptr<int> appendNums);
+
         // === 实现 raftRpcProtoc::raftRpc 的 RPC 接口 ===
         void AppendEntries(::google::protobuf::RpcController* controller,
                           const raftRpcProtoc::AppendEntriesArgs* request,
@@ -485,5 +515,25 @@ private:
                     const raftRpcProtoc::PreRequestVoteArgs* request,
                     raftRpcProtoc::PreRequestVoteReply* response,
                     ::google::protobuf::Closure* done) override;
+
+        // ========== ReadIndex 优化 ==========
+        // 获取当前 commitIndex，用于线性安全读
+        int GetCommitIndex();
+        // 获取当前 Leader 信息
+        void GetLeaderInfo(int* leaderId, std::string* leaderIp, int* leaderPort);
+        // ReadIndex RPC 处理函数
+        void ReadIndex(::google::protobuf::RpcController* controller,
+                       const raftRpcProtoc::ReadIndexRequest* request,
+                       raftRpcProtoc::ReadIndexResponse* response,
+                       ::google::protobuf::Closure* done) override;
+        // ReadIndex 内部处理函数
+        void ReadIndex1(const raftRpcProtoc::ReadIndexRequest* request,
+                        raftRpcProtoc::ReadIndexResponse* response);
+        // 发送 ReadIndex 请求到 Leader
+        bool sendReadIndex(int serverId,
+                           std::shared_ptr<raftRpcProtoc::ReadIndexRequest> request,
+                           std::shared_ptr<raftRpcProtoc::ReadIndexResponse> response);
+        // ========== ReadIndex End ==========
 };
+
 #endif

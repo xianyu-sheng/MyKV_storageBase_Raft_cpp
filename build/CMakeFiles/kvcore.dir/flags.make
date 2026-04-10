@@ -6,5 +6,5 @@ CXX_DEFINES = -DBOOST_ALL_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK
 
 CXX_INCLUDES = -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Clerk -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Raft -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Skiplist-CPP -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftRpcProtoc -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftKVRpcProtoc -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/myRPC/User -I/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/myRPC/Server
 
-CXX_FLAGS = -std=c++14
+CXX_FLAGS = -std=c++17
 
