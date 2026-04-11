@@ -9,6 +9,9 @@
 #include <string>
 #include <condition_variable>
 #include <queue>
+#include <map>
+#include <atomic>
+#include <thread>
 #include "../Proto/raftKVRpcProtoc/KvServerRPC.pb.h"
 #include "../Proto/raftRpcProtoc/raftRPC.pb.h"
 #include "../myRPC/User/KrpcChannel.h"
@@ -419,6 +422,70 @@ private:
     // Pipeline 配置参数（可以按需调整）
     static constexpr int PIPELINE_BATCH_SIZE = 8;       // 每批发送的日志条目上限
     static constexpr int PIPELINE_MAX_INFLIGHT = 16;   // 每个 peer 最大并行在途请求数
+    static constexpr int PIPELINE_MAX_DELAY_MS = 5;    // 最大批次延迟（毫秒）
+
+    // ==================== Leader 批量追加优化 ====================
+    // Leader 端批量缓冲区：收集多个 Start() 请求后一次发送
+    struct PendingEntries {
+        std::vector<raftRpcProtoc::LogEntry> entries;  // 待发送的日志条目
+        int64_t batch_id = 0;                           // 批次ID
+        int64_t first_entry_time_ms = 0;                // 第一个条目添加时的时间戳
+    };
+    
+    std::vector<PendingEntries> m_pendingEntries;       // 每个 Peer 的待发送条目
+    std::mutex m_batchMtx;                              // 批量缓冲区的锁
+    std::condition_variable m_batchCv;                   // 批量发送条件变量
+    std::atomic<bool> m_batchRunning{false};             // 批量发送线程运行标志
+    std::thread m_batchSenderThread;                     // 批量发送线程
+    
+    // 批量追加相关方法
+    void addToPendingBatch(const raftRpcProtoc::LogEntry& entry);  // 添加日志到批量缓冲区
+    void startBatchSenderThread();                       // 启动批量发送线程
+    void stopBatchSenderThread();                        // 停止批量发送线程
+    void batchSenderLoop();                              // 批量发送循环
+    void flushPendingEntries(int peerId);                // 立即刷新某 Peer 的待发送条目
+    // ========================================================
+
+    // Pipeline 批次请求结构
+    struct PipelineBatch {
+        int64_t batch_id;           // 批次唯一ID
+        int first_index;            // 批次的第一个日志索引
+        int last_index;            // 批次的最后一个日志索引
+        int64_t send_time_ms;      // 发送时间（毫秒时间戳）
+        int entry_count;           // 日志条目数量
+        bool matched;              // 是否已收到匹配确认
+    };
+
+    // 每个 Peer 的 Pipeline 状态
+    struct PeerPipelineState {
+        std::queue<PipelineBatch> pending_batches;  // 待发送的批次队列
+        std::map<int64_t, PipelineBatch> in_flight;    // 在途批次（batch_id -> batch）
+        int64_t next_batch_id = 0;                 // 下一个批次ID
+    };
+
+    std::vector<PeerPipelineState> m_peerPipeline;  // 每个 Peer 的 Pipeline 状态
+    
+    // 独立的 Pipeline 锁
+    std::vector<std::unique_ptr<std::mutex>> m_peerPipelineMutex;
+
+    // Pipeline 核心方法
+    bool canSendPipelineBatch(int peerId);                         // 检查是否可以发送新批次
+    bool shouldForceFlushPipeline(int peerId);                    // 检查是否需要强制 flush
+    PipelineBatch createPipelineBatch(int peerId, int startIndex, int endIndex);  // 创建批次
+    void sendPipelineBatch(int peerId, const PipelineBatch& batch); // 发送批次
+    void handlePipelineResponse(int peerId, int matched_index);   // 处理批次响应
+    void slidePipelineWindow(int peerId, int up_to_index);         // 滑动窗口
+    void retryPipelineBatch(int peerId, int batch_id);             // 重试批次
+    void cleanupOldPipelineBatches(int peerId);                    // 清理过期批次
+    void stopPeerPipeline(int peerId);                             // 停止 Peer 的 Pipeline
+    void startPeerPipelineThread(int peerId);                      // 启动 Peer 的 Pipeline 线程
+
+    // Pipeline 发送线程函数
+    void peerPipelineSender(int peerId);
+
+    // 批次延迟统计（用于调试）
+    std::atomic<int64_t> m_total_batches_sent{0};
+    std::atomic<int64_t> m_total_batches_acked{0};
     // ========================================================
 
     public:

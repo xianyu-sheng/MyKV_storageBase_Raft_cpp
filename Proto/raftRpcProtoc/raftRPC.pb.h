@@ -400,6 +400,7 @@ class AppendEntriesArgs PROTOBUF_FINAL :
     kLeaderIdFieldNumber = 2,
     kPrevLogIndexFieldNumber = 3,
     kPrevLogTermFieldNumber = 4,
+    kBatchIdFieldNumber = 7,
     kLeaderCommitFieldNumber = 6,
   };
   // repeated .raftRpcProtoc.LogEntry Entries = 5;
@@ -456,6 +457,15 @@ class AppendEntriesArgs PROTOBUF_FINAL :
   void _internal_set_prevlogterm(::PROTOBUF_NAMESPACE_ID::int32 value);
   public:
 
+  // int64 BatchId = 7;
+  void clear_batchid();
+  ::PROTOBUF_NAMESPACE_ID::int64 batchid() const;
+  void set_batchid(::PROTOBUF_NAMESPACE_ID::int64 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int64 _internal_batchid() const;
+  void _internal_set_batchid(::PROTOBUF_NAMESPACE_ID::int64 value);
+  public:
+
   // int32 LeaderCommit = 6;
   void clear_leadercommit();
   ::PROTOBUF_NAMESPACE_ID::int32 leadercommit() const;
@@ -477,6 +487,7 @@ class AppendEntriesArgs PROTOBUF_FINAL :
   ::PROTOBUF_NAMESPACE_ID::int32 leaderid_;
   ::PROTOBUF_NAMESPACE_ID::int32 prevlogindex_;
   ::PROTOBUF_NAMESPACE_ID::int32 prevlogterm_;
+  ::PROTOBUF_NAMESPACE_ID::int64 batchid_;
   ::PROTOBUF_NAMESPACE_ID::int32 leadercommit_;
   mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_raftRPC_2eproto;
@@ -600,6 +611,8 @@ class AppendEntriesReply PROTOBUF_FINAL :
     kSuccessFieldNumber = 2,
     kUpdateNextIndexFieldNumber = 3,
     kAppStateFieldNumber = 4,
+    kBatchIdFieldNumber = 5,
+    kMatchIndexFieldNumber = 6,
   };
   // int32 Term = 1;
   void clear_term();
@@ -637,6 +650,24 @@ class AppendEntriesReply PROTOBUF_FINAL :
   void _internal_set_appstate(::PROTOBUF_NAMESPACE_ID::int32 value);
   public:
 
+  // int64 BatchId = 5;
+  void clear_batchid();
+  ::PROTOBUF_NAMESPACE_ID::int64 batchid() const;
+  void set_batchid(::PROTOBUF_NAMESPACE_ID::int64 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int64 _internal_batchid() const;
+  void _internal_set_batchid(::PROTOBUF_NAMESPACE_ID::int64 value);
+  public:
+
+  // int32 MatchIndex = 6;
+  void clear_matchindex();
+  ::PROTOBUF_NAMESPACE_ID::int32 matchindex() const;
+  void set_matchindex(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_matchindex() const;
+  void _internal_set_matchindex(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
   // @@protoc_insertion_point(class_scope:raftRpcProtoc.AppendEntriesReply)
  private:
   class _Internal;
@@ -648,6 +679,8 @@ class AppendEntriesReply PROTOBUF_FINAL :
   bool success_;
   ::PROTOBUF_NAMESPACE_ID::int32 updatenextindex_;
   ::PROTOBUF_NAMESPACE_ID::int32 appstate_;
+  ::PROTOBUF_NAMESPACE_ID::int64 batchid_;
+  ::PROTOBUF_NAMESPACE_ID::int32 matchindex_;
   mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_raftRPC_2eproto;
 };
@@ -2294,6 +2327,26 @@ inline void AppendEntriesArgs::set_leadercommit(::PROTOBUF_NAMESPACE_ID::int32 v
   // @@protoc_insertion_point(field_set:raftRpcProtoc.AppendEntriesArgs.LeaderCommit)
 }
 
+// int64 BatchId = 7;
+inline void AppendEntriesArgs::clear_batchid() {
+  batchid_ = PROTOBUF_LONGLONG(0);
+}
+inline ::PROTOBUF_NAMESPACE_ID::int64 AppendEntriesArgs::_internal_batchid() const {
+  return batchid_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int64 AppendEntriesArgs::batchid() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtoc.AppendEntriesArgs.BatchId)
+  return _internal_batchid();
+}
+inline void AppendEntriesArgs::_internal_set_batchid(::PROTOBUF_NAMESPACE_ID::int64 value) {
+  
+  batchid_ = value;
+}
+inline void AppendEntriesArgs::set_batchid(::PROTOBUF_NAMESPACE_ID::int64 value) {
+  _internal_set_batchid(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtoc.AppendEntriesArgs.BatchId)
+}
+
 // -------------------------------------------------------------------
 
 // AppendEntriesReply
@@ -2376,6 +2429,46 @@ inline void AppendEntriesReply::_internal_set_appstate(::PROTOBUF_NAMESPACE_ID::
 inline void AppendEntriesReply::set_appstate(::PROTOBUF_NAMESPACE_ID::int32 value) {
   _internal_set_appstate(value);
   // @@protoc_insertion_point(field_set:raftRpcProtoc.AppendEntriesReply.AppState)
+}
+
+// int64 BatchId = 5;
+inline void AppendEntriesReply::clear_batchid() {
+  batchid_ = PROTOBUF_LONGLONG(0);
+}
+inline ::PROTOBUF_NAMESPACE_ID::int64 AppendEntriesReply::_internal_batchid() const {
+  return batchid_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int64 AppendEntriesReply::batchid() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtoc.AppendEntriesReply.BatchId)
+  return _internal_batchid();
+}
+inline void AppendEntriesReply::_internal_set_batchid(::PROTOBUF_NAMESPACE_ID::int64 value) {
+  
+  batchid_ = value;
+}
+inline void AppendEntriesReply::set_batchid(::PROTOBUF_NAMESPACE_ID::int64 value) {
+  _internal_set_batchid(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtoc.AppendEntriesReply.BatchId)
+}
+
+// int32 MatchIndex = 6;
+inline void AppendEntriesReply::clear_matchindex() {
+  matchindex_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 AppendEntriesReply::_internal_matchindex() const {
+  return matchindex_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 AppendEntriesReply::matchindex() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtoc.AppendEntriesReply.MatchIndex)
+  return _internal_matchindex();
+}
+inline void AppendEntriesReply::_internal_set_matchindex(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  matchindex_ = value;
+}
+inline void AppendEntriesReply::set_matchindex(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_matchindex(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtoc.AppendEntriesReply.MatchIndex)
 }
 
 // -------------------------------------------------------------------

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <sstream>
+#include <sys/time.h>  // gettimeofday for milliseconds
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/access.hpp>
@@ -31,6 +32,13 @@ constexpr bool FIBER_USE_CALLER_THREAD = false;
 // === 时间工具 ===
 inline std::chrono::system_clock::time_point now() {
     return std::chrono::system_clock::now();
+}
+
+// 获取当前毫秒时间戳
+inline int64_t getCurrentTimeMillis() {
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    return static_cast<int64_t>(tv.tv_sec) * 1000 + tv.tv_usec / 1000;
 }
 inline std::chrono::milliseconds getRandomizedElectionTimeout() {
     static thread_local std::mt19937 rng{std::random_device{}()};
@@ -219,6 +227,15 @@ void Raft::init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::sh
     m_inflightCount.resize(n);
     m_inSnapshot.resize(n);
     m_peerSendThreads.resize(n);
+    m_peerPipeline.resize(n);  // 初始化每个 Peer 的 Pipeline 状态
+    // 初始化 Pipeline 互斥锁
+    m_peerPipelineMutex.resize(n);
+    for (int i = 0; i < n; ++i) {
+        m_peerPipelineMutex[i] = std::make_unique<std::mutex>();
+    }
+    
+    // 批量追加优化初始化
+    m_pendingEntries.resize(n);
 
     readPersist(m_persister->ReadRaftState());  // 从持久化存储中恢复Raft状态
 
@@ -473,8 +490,27 @@ bool Raft::sendRequestVote(int server,
             m_matchIndex[i]=0;//表示已经接受到领导日志的index下标，并且换一次领导就要设置为0
             m_inflightCount[i]=0;  // Pipeline：重置在途计数
             m_inSnapshot[i]=false;          // Pipeline：重置快照状态
+            // Pipeline: 清空该 Peer 的批次队列和窗口
+            {
+                std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[i]);
+                while (!m_peerPipeline[i].pending_batches.empty()) {
+                    m_peerPipeline[i].pending_batches.pop();
+                }
+                m_peerPipeline[i].in_flight.clear();
+                m_peerPipeline[i].next_batch_id = 0;
+            }
         }
         persist();
+        
+        // 启动批量发送线程（Leader 批量追加优化）
+        startBatchSenderThread();
+        
+        // Pipeline: 暂时禁用，调试选举问题
+        // TODO: 修复选举问题后重新启用 Pipeline
+        // for (int i = 0; i < m_peers.size(); ++i) {
+        //     if (i == m_me) continue;
+        //     startPeerPipelineThread(i);
+        // }
     }
     return true;
 }
@@ -673,44 +709,21 @@ void Raft::startSnapshotSendThread(int peerId, std::shared_ptr<int> successCount
 }
 
 // 辅助函数：创建线程向指定追随者发送日志条目（AppendEntries）
+// 注意：批量追加优化后，这里只发送空心跳
+// 日志复制完全由批量追加后台线程负责
 void Raft::startLogEntriesSendThread(int peerId, std::shared_ptr<int> successCount) {
-    // 1. 计算前置日志信息（prevLogIndex和prevLogTerm）
-    int preLogIndex = -1;
-    int preLogTerm = -1;
-    getPrevLogInfo(peerId, &preLogIndex, &preLogTerm);
-
-    // 2. 构造AppendEntries请求参数
+    // 心跳只发送空心跳，不发送日志条目
+    // 日志复制由批量追加优化（batchSenderLoop）负责
     auto args = std::make_shared<raftRpcProtoc::AppendEntriesArgs>();
     args->set_term(m_currentTerm);
     args->set_leaderid(m_me);
-    args->set_prevlogindex(preLogIndex);
-    args->set_prevlogterm(preLogTerm);
+    args->set_prevlogindex(m_nextIndex[peerId] - 1);
+    args->set_prevlogterm(getLogTermFromLogIndex(m_nextIndex[peerId] - 1));
     args->set_leadercommit(m_commitIndex);
-    args->clear_entries(); // 清空残留条目
-
-    // 3. 填充需要发送的日志条目
-    if (preLogIndex != m_lastSnapshotIncludeIndex) {
-        // 从preLogIndex的下一条开始发送（非快照后的第一条）
-        int startSliceIdx = getSlicesIndexFromLogIndex(preLogIndex) + 1;
-        for (int j = startSliceIdx; j < m_logs.size(); ++j) {
-            *args->add_entries() = m_logs[j];
-        }
-    } else {
-        // 从快照后的第一条日志开始发送
-        for (const auto& log : m_logs) {
-            *args->add_entries() = log;
-        }
-    }
-
-    // 4. 验证日志条目连续性（保持原逻辑的断言检查）
-    int lastLogIndex = getLastLogIndex();
-    myAssert(preLogIndex + args->entries_size() == lastLogIndex,
-             format("日志条目长度不匹配：prev[%d] + entries[%d] != last[%d]",
-                    preLogIndex, args->entries_size(), lastLogIndex));
-
-    // 5. 创建线程发送日志，分离线程
+    args->set_batchid(0);  // 0 表示空心跳
+    
     auto reply = std::make_shared<raftRpcProtoc::AppendEntriesReply>();
-    reply->set_appstate(Disconnected); // 初始化为未连接状态
+    reply->set_appstate(Disconnected);
     std::thread([this, peerId, args, reply, successCount]() {
         sendAppendEntries(peerId, args, reply, successCount);
     }).detach();
@@ -952,7 +965,14 @@ void Raft::updatePeerSyncState(int peerId,
     m_matchIndex[peerId] = std::max(m_matchIndex[peerId], newMatchIndex);
     m_nextIndex[peerId] = m_matchIndex[peerId] + 1;
 
-    // 3. 防御性断言（原逻辑保留）
+    // 3. Pipeline: 只有批次中有日志条目时才触发窗口滑动
+    if (args->entries_size() > 0) {
+        DPrintf("[Pipeline] rf{%d} peer{%d} matchIndex updated to %d, triggering window slide", 
+                m_me, peerId, m_matchIndex[peerId]);
+        handlePipelineResponse(peerId, m_matchIndex[peerId]);
+    }
+
+    // 4. 防御性断言（原逻辑保留）
     int lastLogIndex = getLastLogIndex();
     myAssert(m_matchIndex[peerId] <= lastLogIndex + 1,
              format("m_matchIndex[%d]>lastLogIndex[%d]", m_matchIndex[peerId], lastLogIndex));
@@ -1207,6 +1227,273 @@ void Raft::persist() {
     m_persister->WaitFlushed(seq);
 }
 
+// ==================== Pipeline 优化实现 ====================
+
+// 检查是否可以发送新的 Pipeline 批次
+bool Raft::canSendPipelineBatch(int peerId) {
+    std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+    return static_cast<int>(m_peerPipeline[peerId].in_flight.size()) < PIPELINE_MAX_INFLIGHT;
+}
+
+// 检查是否需要强制 flush（窗口快满时）
+bool Raft::shouldForceFlushPipeline(int peerId) {
+    std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+    return static_cast<int>(m_peerPipeline[peerId].in_flight.size()) >= PIPELINE_MAX_INFLIGHT * 8 / 10;  // 80% 时强制
+}
+
+// 创建 Pipeline 批次
+Raft::PipelineBatch Raft::createPipelineBatch(int peerId, int startIndex, int endIndex) {
+    PipelineBatch batch;
+    {
+        std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+        batch.batch_id = m_peerPipeline[peerId].next_batch_id++;
+    }
+    batch.first_index = startIndex;
+    batch.last_index = endIndex;
+    batch.send_time_ms = getCurrentTimeMillis();
+    batch.entry_count = endIndex - startIndex + 1;
+    batch.matched = false;
+    return batch;
+}
+
+// 发送 Pipeline 批次到指定 Peer
+void Raft::sendPipelineBatch(int peerId, const PipelineBatch& batch) {
+    DPrintf("[Pipeline] rf{%d} peer{%d} sending batch %lld [idx %d-%d], entries: %d",
+            m_me, peerId, batch.batch_id, batch.first_index, batch.last_index, batch.entry_count);
+    
+    // 构造 AppendEntries 请求
+    auto args = std::make_shared<raftRpcProtoc::AppendEntriesArgs>();
+    
+    // 计算 prevLogInfo
+    int prevLogIndex = batch.first_index - 1;
+    int prevLogTerm = getLogTermFromLogIndex(prevLogIndex);
+    
+    args->set_term(m_currentTerm);
+    args->set_leaderid(m_me);
+    args->set_prevlogindex(prevLogIndex);
+    args->set_prevlogterm(prevLogTerm);
+    args->set_leadercommit(m_commitIndex);
+    args->set_batchid(batch.batch_id);  // 添加批次 ID
+    
+    // 填充日志条目
+    int startSliceIdx = getSlicesIndexFromLogIndex(batch.first_index);
+    for (int i = startSliceIdx; i < m_logs.size(); ++i) {
+        *args->add_entries() = m_logs[i];
+        if (m_logs[i].logindex() >= batch.last_index) {
+            break;
+        }
+    }
+    
+    // 创建响应和计数器
+    auto reply = std::make_shared<raftRpcProtoc::AppendEntriesReply>();
+    reply->set_appstate(Disconnected);
+    auto appendNums = std::make_shared<int>(0);
+    
+    // 发送 RPC（异步，在独立线程中处理）
+    std::thread([this, peerId, batch, args, reply, appendNums]() {
+        sendAppendEntries(peerId, args, reply, appendNums);
+    }).detach();
+    
+    m_total_batches_sent++;
+}
+
+// 处理 Pipeline 响应
+void Raft::handlePipelineResponse(int peerId, int matched_index) {
+    slidePipelineWindow(peerId, matched_index);
+}
+
+// 滑动 Pipeline 窗口
+void Raft::slidePipelineWindow(int peerId, int up_to_index) {
+    std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+    
+    // 找出需要确认的批次
+    std::vector<int64_t> to_remove;
+    for (auto& [batch_id, batch] : m_peerPipeline[peerId].in_flight) {
+        if (batch.last_index <= up_to_index) {
+            to_remove.push_back(batch_id);
+        }
+    }
+    
+    // 确认并移除
+    for (int64_t batch_id : to_remove) {
+        m_peerPipeline[peerId].in_flight.erase(batch_id);
+        m_total_batches_acked++;
+    }
+    
+    DPrintf("[Pipeline] rf{%d} peer{%d} slide window to %d, remaining in_flight: %d", 
+            m_me, peerId, up_to_index, static_cast<int>(m_peerPipeline[peerId].in_flight.size()));
+}
+
+// 重试 Pipeline 批次
+void Raft::retryPipelineBatch(int peerId, int batch_id) {
+    PipelineBatch batch;
+    {
+        std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+        if (m_peerPipeline[peerId].in_flight.find(batch_id) != m_peerPipeline[peerId].in_flight.end()) {
+            batch = m_peerPipeline[peerId].in_flight[batch_id];
+        } else {
+            return;  // 批次已不存在
+        }
+    }
+    
+    // 重新发送
+    sendPipelineBatch(peerId, batch);
+}
+
+// 清理过期的 Pipeline 批次
+void Raft::cleanupOldPipelineBatches(int peerId) {
+    std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+    
+    // 清理过老的 in_flight 批次（超过一定时间的）
+    int64_t now_ms = getCurrentTimeMillis();
+    std::vector<int64_t> to_remove;
+    
+    for (auto& [batch_id, batch] : m_peerPipeline[peerId].in_flight) {
+        if (now_ms - batch.send_time_ms > 5000) {  // 超过 5 秒未确认
+            to_remove.push_back(batch_id);
+        }
+    }
+    
+    for (int64_t batch_id : to_remove) {
+        DPrintf("[Pipeline] rf{%d} peer{%d} removing stale batch %lld", m_me, peerId, batch_id);
+        m_peerPipeline[peerId].in_flight.erase(batch_id);
+    }
+}
+
+// 停止 Peer 的 Pipeline
+void Raft::stopPeerPipeline(int peerId) {
+    {
+        std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+        // 清空待发送队列
+        while (!m_peerPipeline[peerId].pending_batches.empty()) {
+            m_peerPipeline[peerId].pending_batches.pop();
+        }
+        // 清空在途批次
+        m_peerPipeline[peerId].in_flight.clear();
+    }
+    DPrintf("[Pipeline] rf{%d} peer{%d} pipeline stopped", m_me, peerId);
+}
+
+// 启动 Peer 的 Pipeline 发送线程
+void Raft::startPeerPipelineThread(int peerId) {
+    // 如果线程已存在，先分离它
+    if (peerId < static_cast<int>(m_peerSendThreads.size()) && 
+        m_peerSendThreads[peerId].joinable()) {
+        m_peerSendThreads[peerId].detach();
+    }
+    
+    DPrintf("[Pipeline] rf{%d} peer{%d} starting pipeline sender thread, lastLogIndex: %d", 
+            m_me, peerId, getLastLogIndex());
+    
+    // 启动新的发送线程
+    m_peerSendThreads[peerId] = std::thread(&Raft::peerPipelineSender, this, peerId);
+    m_peerSendThreads[peerId].detach();
+    DPrintf("[Pipeline] rf{%d} peer{%d} pipeline sender thread started", m_me, peerId);
+}
+
+// Peer Pipeline 发送线程主函数
+void Raft::peerPipelineSender(int peerId) {
+    DPrintf("[Pipeline] rf{%d} peer{%d} sender thread started", m_me, peerId);
+    
+    int consecutive_empty = 0;  // 统计连续没有新日志的次数
+    
+    while (true) {
+        // 检查是否还是 Leader
+        {
+            std::lock_guard<std::mutex> lg(m_mtx);
+            if (m_status != Leader) {
+                DPrintf("[Pipeline] rf{%d} peer{%d} sender: not leader anymore, stopping", m_me, peerId);
+                stopPeerPipeline(peerId);
+                return;
+            }
+        }
+        
+        // 获取当前的 nextIndex 和 lastLogIndex
+        int nextIdx;
+        int lastLogIdx;
+        {
+            std::lock_guard<std::mutex> lg(m_mtx);
+            nextIdx = m_nextIndex[peerId];
+            lastLogIdx = getLastLogIndex();
+        }
+        
+        // 检查是否有新的日志需要发送
+        if (nextIdx <= lastLogIdx) {
+            consecutive_empty = 0;
+            
+            // 计算批次大小：动态调整
+            int batchSize;
+            {
+                std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+                int in_flight = static_cast<int>(m_peerPipeline[peerId].in_flight.size());
+                
+                // 根据窗口使用情况动态调整批次大小
+                if (in_flight >= PIPELINE_MAX_INFLIGHT * 8 / 10) {
+                    // 窗口快满了，只发 1 条
+                    batchSize = 1;
+                } else if (in_flight >= PIPELINE_MAX_INFLIGHT * 5 / 10) {
+                    // 窗口使用一半，发少量
+                    batchSize = 4;
+                } else {
+                    // 窗口空闲，可以发更多
+                    batchSize = PIPELINE_BATCH_SIZE;
+                }
+            }
+            
+            int endIdx = std::min(nextIdx + batchSize - 1, lastLogIdx);
+            
+            // 检查是否可以发送（窗口未满）
+            if (canSendPipelineBatch(peerId)) {
+                // 创建并发送批次
+                PipelineBatch batch = createPipelineBatch(peerId, nextIdx, endIdx);
+                
+                // 添加到 in_flight
+                {
+                    std::lock_guard<std::mutex> lock(*m_peerPipelineMutex[peerId]);
+                    m_peerPipeline[peerId].in_flight[batch.batch_id] = batch;
+                }
+                
+                // 发送批次
+                sendPipelineBatch(peerId, batch);
+                
+                // 更新 nextIndex
+                {
+                    std::lock_guard<std::mutex> lg(m_mtx);
+                    m_nextIndex[peerId] = endIdx + 1;
+                }
+            }
+            
+            // 发送完成后短暂休眠，让响应有时间回来
+            usleep(100);  // 0.1ms
+            
+        } else {
+            // 没有新日志，增加计数器
+            consecutive_empty++;
+            
+            // 使用指数退避策略，等待时间逐渐增加
+            int wait_us;
+            if (consecutive_empty <= 3) {
+                wait_us = 500;       // 前3次：0.5ms
+            } else if (consecutive_empty <= 10) {
+                wait_us = 1000;       // 接下来：1ms
+            } else if (consecutive_empty <= 30) {
+                wait_us = 2000;       // 接下来：2ms
+            } else {
+                wait_us = 5000;       // 之后：5ms（最多）
+            }
+            
+            usleep(wait_us);
+            
+            // 定期清理过期批次（每 50 次检查一次）
+            if (consecutive_empty % 50 == 0) {
+                cleanupOldPipelineBatches(peerId);
+            }
+        }
+    }
+}
+
+// ==================== Pipeline 优化实现结束 ====================
+
 
 
 void Raft::Start(const Op& command, int* newLogIndex, bool* isLeader) {
@@ -1240,8 +1527,177 @@ void Raft::Start(const Op& command, int* newLogIndex, bool* isLeader) {
     // 5. 持久化（term/votedFor/logs 等）
     persist();
 
-    // 6. 可以选择立即触发一次心跳/日志复制（也可依赖心跳线程）
-    // doHeartBeat(); // 可选
+    // 6. 添加到批量缓冲区（Pipeline 优化核心）
+    // 注意：这里不立即触发发送，而是由后台线程批量发送
+    addToPendingBatch(entry);
+}
+
+// ==================== Leader 批量追加优化实现 ====================
+
+// 添加日志到批量缓冲区
+void Raft::addToPendingBatch(const raftRpcProtoc::LogEntry& entry) {
+    // 为每个 Peer 添加相同的日志条目
+    std::lock_guard<std::mutex> lock(m_batchMtx);
+    for (size_t i = 0; i < m_pendingEntries.size(); ++i) {
+        if (i == m_me) continue;  // 跳过自己
+        auto& pending = m_pendingEntries[i];
+        
+        // 如果是第一个条目，记录时间戳
+        if (pending.entries.empty()) {
+            pending.first_entry_time_ms = getCurrentTimeMillis();
+        }
+        
+        pending.entries.push_back(entry);
+    }
+}
+
+// 启动批量发送线程
+void Raft::startBatchSenderThread() {
+    // 已经是 Leader 了，启动批量发送
+    if (!m_batchRunning.load()) {
+        m_batchRunning.store(true);
+        m_batchSenderThread = std::thread(&Raft::batchSenderLoop, this);
+        m_batchSenderThread.detach();
+    }
+}
+
+// 停止批量发送线程
+void Raft::stopBatchSenderThread() {
+    m_batchRunning.store(false);
+    m_batchCv.notify_all();
+}
+
+// 批量发送循环
+void Raft::batchSenderLoop() {
+    while (m_batchRunning.load()) {
+        // 首先检查是否还是 Leader
+        bool isLeader = false;
+        int currentTerm = 0;
+        {
+            std::lock_guard<std::mutex> lg(m_mtx);
+            isLeader = (m_status == Leader);
+            currentTerm = m_currentTerm;
+        }
+        
+        if (!isLeader) {
+            // 不是 Leader 了，停止
+            break;
+        }
+        
+        std::vector<std::pair<int, std::vector<raftRpcProtoc::LogEntry>>> toSend;
+        
+        // 检查是否有待发送的条目
+        {
+            std::lock_guard<std::mutex> lock(m_batchMtx);
+            int64_t now_ms = getCurrentTimeMillis();
+            
+            for (size_t i = 0; i < m_pendingEntries.size(); ++i) {
+                if (i == m_me) continue;
+                
+                auto& pending = m_pendingEntries[i];
+                if (!pending.entries.empty()) {
+                    // 检查是否达到 flush 条件
+                    bool shouldFlush = false;
+                    
+                    // 条件1: 缓冲区已满
+                    if (pending.entries.size() >= static_cast<size_t>(PIPELINE_BATCH_SIZE)) {
+                        shouldFlush = true;
+                    }
+                    // 条件2: 超时（5ms）
+                    else if (getCurrentTimeMillis() - pending.first_entry_time_ms >= PIPELINE_MAX_DELAY_MS) {
+                        shouldFlush = true;
+                    }
+                    // 条件3: 只有1条日志但等待时间超过2ms，也可以发送
+                    // （确保低延迟，同时有批量效果）
+                    else if (pending.entries.size() >= 1 &&
+                            getCurrentTimeMillis() - pending.first_entry_time_ms >= 2) {
+                        shouldFlush = true;
+                    }
+                    
+                    if (shouldFlush) {
+                        toSend.push_back({static_cast<int>(i), std::move(pending.entries)});
+                        pending.entries.clear();
+                    }
+                }
+            }
+        }
+        
+        // 发送收集到的批次
+        for (auto& [peerId, entries] : toSend) {
+            if (entries.empty()) continue;
+            
+            // 再次检查 Leader 状态
+            {
+                std::lock_guard<std::mutex> lg(m_mtx);
+                if (m_status != Leader) {
+                    // Leader 切换了，丢弃这个批次
+                    continue;
+                }
+            }
+            
+            // 构造 AppendEntries 请求
+            auto args = std::make_shared<raftRpcProtoc::AppendEntriesArgs>();
+            int prevLogIndex = entries.front().logindex() - 1;
+            
+            args->set_term(m_currentTerm);
+            args->set_leaderid(m_me);
+            args->set_prevlogindex(prevLogIndex);
+            args->set_prevlogterm(getLogTermFromLogIndex(prevLogIndex));
+            args->set_leadercommit(m_commitIndex);
+            args->set_batchid(entries.front().logindex());
+            
+            for (auto& entry : entries) {
+                *args->add_entries() = entry;
+            }
+            
+            auto reply = std::make_shared<raftRpcProtoc::AppendEntriesReply>();
+            reply->set_appstate(Disconnected);
+            auto appendNums = std::make_shared<int>(1);  // Leader 自己算一个
+            
+            std::thread([this, peerId, args, reply, appendNums]() {
+                sendAppendEntries(peerId, args, reply, appendNums);
+            }).detach();
+        }
+        
+        // 休眠一段时间再检查（1ms）
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
+// 立即刷新某 Peer 的待发送条目（当需要立即提交时调用）
+void Raft::flushPendingEntries(int peerId) {
+    std::vector<raftRpcProtoc::LogEntry> entries;
+    
+    {
+        std::lock_guard<std::mutex> lock(m_batchMtx);
+        if (peerId < static_cast<int>(m_pendingEntries.size())) {
+            entries = std::move(m_pendingEntries[peerId].entries);
+            m_pendingEntries[peerId].entries.clear();
+        }
+    }
+    
+    if (entries.empty()) return;
+    
+    auto args = std::make_shared<raftRpcProtoc::AppendEntriesArgs>();
+    int prevLogIndex = entries.front().logindex() - 1;
+    
+    args->set_term(m_currentTerm);
+    args->set_leaderid(m_me);
+    args->set_prevlogindex(prevLogIndex);
+    args->set_prevlogterm(getLogTermFromLogIndex(prevLogIndex));
+    args->set_leadercommit(m_commitIndex);
+    args->set_batchid(entries.front().logindex());
+    
+    for (auto& entry : entries) {
+        *args->add_entries() = entry;
+    }
+    
+    auto reply = std::make_shared<raftRpcProtoc::AppendEntriesReply>();
+    auto appendNums = std::make_shared<int>(1);
+    
+    std::thread([this, peerId, args, reply, appendNums]() {
+        sendAppendEntries(peerId, args, reply, appendNums);
+    }).detach();
 }
 
 void Raft::applierTicker(){

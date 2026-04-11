@@ -20,6 +20,7 @@ message AppendEntriesArgs{
     int32 PrevLogTerm=4;
     repeated LogEntry Entries=5;
     int32 LeaderCommit=6;
+    int64 BatchId=7;  // Pipeline: 批次唯一ID
 }
 
 message AppendEntriesReply{
@@ -27,6 +28,8 @@ message AppendEntriesReply{
     bool Success=2;
     int32 UpdateNextIndex=3;
     int32 AppState=4;
+    int64 BatchId=5;      // Pipeline: 返回对应的批次ID
+    int32 MatchIndex=6;  // Pipeline: 匹配的最大日志索引
 }
 message RequestVoteArgs{
     int32 Term=1;

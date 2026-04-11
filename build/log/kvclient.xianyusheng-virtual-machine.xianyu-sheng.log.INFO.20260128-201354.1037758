@@ -1,4 +1,0 @@
-Log file created at: 2026/01/28 20:13:54
-Running on machine: xianyusheng-virtual-machine
-Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
-I0128 20:13:54.895373 1037759 ZooKeeper.cc:60] zookeeper init success
