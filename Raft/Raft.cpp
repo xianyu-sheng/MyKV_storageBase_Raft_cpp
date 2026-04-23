@@ -1785,6 +1785,27 @@ void Raft::GetLeaderInfo(int* leaderId, std::string* leaderIp, int* leaderPort) 
     if (leaderPort) *leaderPort = 0;
 }
 
+// 等待日志重放完成（m_lastApplied 追上 getLastLogIndex()）
+// 用于确保 HNSW 索引在全量日志重放完成后再构建
+bool Raft::WaitApplyDone(int timeoutMs) {
+    auto deadline = std::chrono::steady_clock::now() +
+                   std::chrono::milliseconds(timeoutMs);
+    while (true) {
+        {
+            std::lock_guard<std::mutex> lg(m_mtx);
+            // 追上最后一个日志条目就算恢复完成（此时 SkipList 有所有数据）
+            if (m_lastApplied >= getLastLogIndex()) {
+                return true;
+            }
+        }
+        auto now = std::chrono::steady_clock::now();
+        if (now >= deadline) {
+            return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+}
+
 // ReadIndex RPC 处理器：Follower 请求 Leader 确认
 void Raft::ReadIndex1(const raftRpcProtoc::ReadIndexRequest* request,
                        raftRpcProtoc::ReadIndexResponse* response) {

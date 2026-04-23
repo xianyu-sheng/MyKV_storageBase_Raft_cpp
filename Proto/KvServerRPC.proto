@@ -28,8 +28,45 @@ message PutAppendReply{
     bytes Err=1;
 }
 
+// ========== 推荐特征存储相关 ==========
+
+// 商品/内容特征：存储在 SkipList KV 中，走 Raft 一致性保证
+message ItemFeature {
+    string item_id = 1;                     // 商品ID（作为 KV 的 Key）
+    repeated float embedding = 2;             // 128维特征向量（Faiss 索引的原始数据）
+    map<string, string> attrs = 3;           // 商品属性：category, price, tags...
+    int64 timestamp = 4;                     // 更新时间戳
+}
+
+// 写入特征请求（走 Raft 共识，类似 PutAppend）
+message PutFeatureArgs {
+    ItemFeature feature = 1;                 // 待写入的特征
+    bytes ClientId = 2;                      // 客户端标识（去重用）
+    int32 RequestId = 3;                     // 请求序号（去重用）
+}
+
+message PutFeatureReply {
+    bytes Err = 1;                          // "OK" 或错误信息
+}
+
+// 向量召回请求（不走 Raft，Leader/Follower 均可直接读本地 Faiss）
+message SearchRequest {
+    repeated float query_vector = 1;         // 用户偏好向量（128维 float32）
+    int32 top_k = 2;                        // 返回 Top-K 个相似商品
+    string search_type = 3;                  // "inner_product" 或 "l2"
+}
+
+// 向量召回响应
+message SearchResponse {
+    repeated string item_ids = 1;            // Top-K 商品ID列表
+    repeated float scores = 2;               // 对应的相似度分数
+    int64 search_time_us = 3;               // 纯 Faiss 检索耗时（微秒）
+}
+
 //只有Raft节点之间才会涉及RPC通信
 service kvServerRpc{
     rpc Get(GetArgs) returns (GetReply);
     rpc PutAppend(PutAppendArgs) returns (PutAppendReply);
+    rpc PutFeature(PutFeatureArgs) returns (PutFeatureReply);
+    rpc Search(SearchRequest) returns (SearchResponse);
 }

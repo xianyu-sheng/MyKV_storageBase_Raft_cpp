@@ -279,6 +279,30 @@ KvServer/KvServer.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.s
 .PHONY : KvServer/KvServer.cpp.s
 
+KvServer/RecallEngine.o: KvServer/RecallEngine.cpp.o
+.PHONY : KvServer/RecallEngine.o
+
+# target to build an object file
+KvServer/RecallEngine.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o
+.PHONY : KvServer/RecallEngine.cpp.o
+
+KvServer/RecallEngine.i: KvServer/RecallEngine.cpp.i
+.PHONY : KvServer/RecallEngine.i
+
+# target to preprocess a source file
+KvServer/RecallEngine.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.i
+.PHONY : KvServer/RecallEngine.cpp.i
+
+KvServer/RecallEngine.s: KvServer/RecallEngine.cpp.s
+.PHONY : KvServer/RecallEngine.s
+
+# target to generate assembly for a file
+KvServer/RecallEngine.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.s
+.PHONY : KvServer/RecallEngine.cpp.s
+
 Proto/raftKVRpcProtoc/KvServerRPC.pb.o: Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o
 .PHONY : Proto/raftKVRpcProtoc/KvServerRPC.pb.o
 
@@ -615,6 +639,9 @@ help:
 	@echo "... KvServer/KvServer.o"
 	@echo "... KvServer/KvServer.i"
 	@echo "... KvServer/KvServer.s"
+	@echo "... KvServer/RecallEngine.o"
+	@echo "... KvServer/RecallEngine.i"
+	@echo "... KvServer/RecallEngine.s"
 	@echo "... Proto/raftKVRpcProtoc/KvServerRPC.pb.o"
 	@echo "... Proto/raftKVRpcProtoc/KvServerRPC.pb.i"
 	@echo "... Proto/raftKVRpcProtoc/KvServerRPC.pb.s"

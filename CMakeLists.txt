@@ -28,6 +28,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/Proto/raftKVRpcProtoc
     ${CMAKE_CURRENT_SOURCE_DIR}/myRPC/User
     ${CMAKE_CURRENT_SOURCE_DIR}/myRPC/Server
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/hnswlib
 )
 
 # 源文件列表
@@ -37,6 +38,7 @@ set(RAFT_SRC
 
 set(KVSERVER_SRC
     KvServer/KvServer.cpp
+    KvServer/RecallEngine.cpp
 )
 
 set(CLERK_SRC

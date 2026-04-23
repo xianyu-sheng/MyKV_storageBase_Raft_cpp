@@ -284,6 +284,9 @@ CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o: \
  /usr/include/google/protobuf/stubs/stl_util.h \
  /usr/include/google/protobuf/message.h \
  /usr/include/google/protobuf/extension_set.h /usr/include/c++/11/cassert \
- /usr/include/google/protobuf/service.h \
+ /usr/include/google/protobuf/map_entry.h \
  /usr/include/google/protobuf/reflection_ops.h \
+ /usr/include/google/protobuf/map_field_inl.h \
+ /usr/include/google/protobuf/map_field.h \
+ /usr/include/google/protobuf/service.h \
  /usr/include/google/protobuf/wire_format.h

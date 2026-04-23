@@ -1,7 +1,8 @@
 #pragma once
 #include <random>
 #include <string>
-#include <memory> // 必须包含这个
+#include <vector>
+#include <memory>
 #include "../myRPC/User/KrpcChannel.h"
 #include "../myRPC/Server/KrpcController.h"
 #include "../Proto/raftKVRpcProtoc/KvServerRPC.pb.h"
@@ -13,26 +14,27 @@ public:
     void Put(const std::string& key, const std::string& value);
     std::string Get(const std::string& key);
 
-    // 关闭连接（析构时调用）
+    // 新增：写入商品特征（走 Raft 强一致路径）
+    void PutFeature(const raftKVRpcProtoc::ItemFeature& feature);
+
+    // 新增：向量召回搜索（走 CQRS 只读视图，Leader/Follower 均可）
+    struct SearchResult {
+        std::vector<std::string> item_ids;
+        std::vector<float> scores;
+        int64_t search_time_us = 0;
+    };
+    SearchResult Search(const std::vector<float>& query_vector, int topK = 10);
+
     void Close();
 
 private:
+    void InitStub();
     int RequestId_;
     int ClientId_;
-
-    // 【关键优化】：用来复用连接的成员变量
     std::shared_ptr<KrpcChannel> channel_;
     std::shared_ptr<raftKVRpcProtoc::kvServerRpc_Stub> stub_;
-
-    // 辅助函数：初始化或重置连接
-    void InitStub();
-
-    // 记录当前连接的 Leader 地址（用于重连判断）
     std::string m_leaderIp;
     int m_leaderPort;
-
-    // 连接池单例引用
-    // static ConnectionPool& getPool() { return ConnectionPool::getInstance(); }
 };
 
 // ... random_key 和 random_value 函数保持不变 ...

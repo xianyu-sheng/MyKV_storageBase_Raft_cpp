@@ -134,14 +134,90 @@ std::string Clerk::Get(const std::string& key){
             return "";
         }
         if(err == "ErrWrongLeader"){
-            // 遇到非 Leader，销毁连接重新查询 ZK
             stub_ = nullptr;
             channel_ = nullptr;
-            m_leaderIp = "";  // 重置 Leader 地址
+            m_leaderIp = "";
             m_leaderPort = 0;
             usleep(50000);
             continue;
         }
         return "";
     }
+}
+
+void Clerk::PutFeature(const raftKVRpcProtoc::ItemFeature& feature) {
+    RequestId_++;
+    raftKVRpcProtoc::PutFeatureArgs request;
+    request.mutable_feature()->CopyFrom(feature);
+    request.set_clientid(std::to_string(ClientId_));
+    request.set_requestid(RequestId_);
+
+    int retry_count = 0;
+    const int kMaxRetry = 100;
+
+    while (true) {
+        if (!stub_) InitStub();
+
+        KrpcController controller;
+        controller.SetTimeout(5000);
+        raftKVRpcProtoc::PutFeatureReply response;
+
+        stub_->PutFeature(&controller, &request, &response, nullptr);
+
+        if (controller.Failed()) {
+            stub_ = nullptr;
+            channel_ = nullptr;
+            m_leaderIp = "";
+            m_leaderPort = 0;
+            retry_count++;
+            if (retry_count > kMaxRetry) {
+                LOG(ERROR) << "PutFeature RPC failed too many times!";
+                return;
+            }
+            usleep(50000);
+            continue;
+        }
+
+        retry_count = 0;
+        const std::string& err = response.err();
+        if (err == "OK") return;
+        if (err == "ErrWrongLeader") {
+            stub_ = nullptr;
+            channel_ = nullptr;
+            m_leaderIp = "";
+            m_leaderPort = 0;
+            usleep(50000);
+            continue;
+        }
+        return;
+    }
+}
+
+Clerk::SearchResult Clerk::Search(const std::vector<float>& query_vector, int topK) {
+    SearchResult result;
+    raftKVRpcProtoc::SearchRequest request;
+    for (float v : query_vector) {
+        request.add_query_vector(v);
+    }
+    request.set_top_k(topK);
+    request.set_search_type("inner_product");
+
+    if (!stub_) InitStub();
+
+    KrpcController controller;
+    controller.SetTimeout(5000);
+    raftKVRpcProtoc::SearchResponse response;
+
+    stub_->Search(&controller, &request, &response, nullptr);
+
+    if (!controller.Failed()) {
+        for (int i = 0; i < response.item_ids_size(); ++i) {
+            result.item_ids.push_back(response.item_ids(i));
+        }
+        for (int i = 0; i < response.scores_size(); ++i) {
+            result.scores.push_back(response.scores(i));
+        }
+        result.search_time_us = response.search_time_us();
+    }
+    return result;
 }

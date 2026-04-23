@@ -1,37 +1,39 @@
 #pragma once
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include <map>
 #include <memory>
 #include <mutex>
-#include "../Raft/raft.h"//RAft类
-#include "../Skiplist-CPP/skiplist.h"//SkipList类
+#include <functional>
+#include "../Raft/raft.h"
+#include "../Skiplist-CPP/skiplist.h"
 #include "../Proto/raftKVRpcProtoc/KvServerRPC.pb.h"
 #include "../Proto/raftRpcProtoc/raftRPC.pb.h"
 #include "../Raft/ApplyMsg.h"
 #include <google/protobuf/service.h>
 
-//日志命令结构
+// 日志命令结构（扩展支持 PutFeature 操作）
 struct Op{
-    std::string Operation;//"Get"或"Put"
-    std::string Key;
-    std::string Value;
-    std::string  ClientId;
+    std::string Operation;  // "Get" | "Put" | "Append" | "PutFeature" | "DeleteFeature"
+    std::string Key;       // 对 PutFeature/DeleteFeature：item_id
+    std::string Value;      // 对 PutFeature：ItemFeature.SerializeAsString()
+    std::string ClientId;
     int RequestId;
 };
 
-
-//一般错误码可以直接用字符串常量
 static const std::string OK ="OK";
 static const std::string ErrNoKey="ErrNoKey";
 static const std::string ErrWrongLeader="ErrWrongLeader";
 
-//Kvserver负责实现kvserverRPC定义RPC接口
+// CQRS 架构：读写分离
+namespace featureServer { class RecallEngine; }
+
 class KvServer:public raftKVRpcProtoc::kvServerRpc{
     public:
-    //构造函数：传入raft节点指针等
     KvServer(std::shared_ptr<Raft> raftNode);
-    //Rpc接口(proto里定义的两个RPC接口)
+
+    // 原有 RPC（proto 生成）
     void Get(::google::protobuf::RpcController* controller,
              const raftKVRpcProtoc::GetArgs* request,
              raftKVRpcProtoc::GetReply* response,
@@ -40,58 +42,73 @@ class KvServer:public raftKVRpcProtoc::kvServerRpc{
                    const raftKVRpcProtoc::PutAppendArgs* request,
                    raftKVRpcProtoc::PutAppendReply* response,
                    ::google::protobuf::Closure* done) override;
-    // 供上面包装函数调用的实际业务逻辑版本（不带 controller/done）
-    void Get(const raftKVRpcProtoc::GetArgs* args,
-             raftKVRpcProtoc::GetReply* reply);
-    void PutAppend(const raftKVRpcProtoc::PutAppendArgs* args,
-                   raftKVRpcProtoc::PutAppendReply* reply);
-    //提供给Raft的入口，Raft在apply日志时，调用这个接口吧ApplyMsg推给KvServer
+    // 新增 RPC（proto 生成）
+    void PutFeature(::google::protobuf::RpcController* controller,
+                    const raftKVRpcProtoc::PutFeatureArgs* request,
+                    raftKVRpcProtoc::PutFeatureReply* response,
+                    ::google::protobuf::Closure* done) override;
+    void Search(::google::protobuf::RpcController* controller,
+                 const raftKVRpcProtoc::SearchRequest* request,
+                 raftKVRpcProtoc::SearchResponse* response,
+                 ::google::protobuf::Closure* done) override;
+
+    // 业务逻辑版本（不带 controller/done）
+    void Get(const raftKVRpcProtoc::GetArgs* args, raftKVRpcProtoc::GetReply* reply);
+    void PutAppend(const raftKVRpcProtoc::PutAppendArgs* args, raftKVRpcProtoc::PutAppendReply* reply);
+    void PutFeature(const raftKVRpcProtoc::PutFeatureArgs* args, raftKVRpcProtoc::PutFeatureReply* reply);
+    void Search(const raftKVRpcProtoc::SearchRequest* args, raftKVRpcProtoc::SearchResponse* reply);
+
+    // Raft 状态机_apply_入口
     void Apply(const ApplyMsg& msg);
 
-    // ========== ReadIndex 优化 ==========
-    // 设置 Leader 信息（从 Raft 层同步过来）
+    // ReadIndex
     void SetLeaderInfo(int leaderId, const std::string& leaderIp, int leaderPort);
-    // 获取当前的 commitIndex（用于 ReadIndex 等待）
     int GetCommitIndex() { return m_raftNode->GetCommitIndex(); }
-    // ========== ReadIndex End ==========
+    void setRaftNode(std::shared_ptr<Raft> raftNode) { m_raftNode = raftNode; }
+
+    // 启动时全量构建 HNSW 索引（懒加载：首次 Search RPC 时自动构建）
+    void buildRecallIndex();
+
+    // 懒加载：Search RPC 首次调用时构建索引（确保 SkipList 已恢复所有数据）
+    void buildIndexIfNeeded();
 
     private:
-    //内部的辅助函数
-    void ExecuteGetOpOnKVDB(const Op& op,std::string* value,bool* exist);
+    void ExecuteGetOpOnKVDB(const Op& op, std::string* value, bool* exist);
     void ExecutePutAppendOnKVDB(const Op& op);
-    bool ifRequestDuplicate(const std::string& clientId,int requestId);
-    void recordRequestResult(const Op& op,const std::string& lastValue);
-
-    // ========== ReadIndex 优化 ==========
-    // ReadIndex: 等待 apply 到指定 commitIndex
+    bool ifRequestDuplicate(const std::string& clientId, int requestId);
+    void recordRequestResult(const Op& op, const std::string& lastValue);
     bool WaitForCommitIndex(int targetIndex, int timeoutMs);
-    // 向 Leader 发送 ReadIndex RPC
     bool QueryLeaderForReadIndex(int* commitIndex);
-    // ========== ReadIndex End ==========
+
+    // 写入 KV 后，驱动 RecallEngine 增量索引（CQRS 写路径）
+    void applyFeatureToIndex(const raftKVRpcProtoc::ItemFeature& feat);
+
+    // 软删除：从 SkipList 逻辑删除 + 从 RecallEngine 索引中移除
+    void deleteFeature(const std::string& itemId);
 
     private:
-    // === 和 Raft 通信 ===
     std::shared_ptr<Raft> m_raftNode;
-    // === 真正的 KV 数据库：用跳表存储 key/value ===
     SkipList<std::string, std::string> m_kvdb;
-    // === 用于 RPC 线程等待 Raft 提交日志 ===
-    std::map<int, std::shared_ptr<LockQueue<Op>>> waitApplyCh;  // key: raft log index
-    std::mutex m_mtx;
-    // === 去重表：保证幂等性（按照 clientId + requestId 去重） ===
-    struct RequestRecord {
-        int         lastRequestId;
-        std::string lastValue;  // 对 Get/Put/Append 的上次返回值
-    };
-    std::unordered_map<std::string, RequestRecord> m_lastRequests; // key: ClientId
 
-    // ========== ReadIndex 优化 ==========
-    // 等待 commitIndex 的通道
+    // ========== CQRS: 异步只读查询视图 ==========
+    std::unique_ptr<featureServer::RecallEngine> m_recallEngine;
+    bool m_indexBuilt = false;  // 懒加载标记
+    // ========== CQRS End ==========
+
+    std::map<int, std::shared_ptr<LockQueue<Op>>> waitApplyCh;
+    std::mutex m_mtx;
+
+    struct RequestRecord {
+        int lastRequestId;
+        std::string lastValue;
+    };
+    std::unordered_map<std::string, RequestRecord> m_lastRequests;
+    std::mutex m_reqMtx;  // 保护 m_lastRequests 的并发读写
+
     std::map<int, std::shared_ptr<LockQueue<ApplyMsg>>> m_commitIndexCh;
     std::mutex m_commitMtx;
-    // Leader 信息（用于 Follower 向 Leader 发送 ReadIndex）
     std::string m_leaderIp;
     int m_leaderPort;
     int m_leaderId;
     std::mutex m_leaderMtx;
-    // ========== ReadIndex End ==========
 };

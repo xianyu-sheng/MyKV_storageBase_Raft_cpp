@@ -91,12 +91,12 @@ clean: CMakeFiles/run_kvclient_default.dir/clean
 CMakeFiles/kvcore.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvcore.dir/build.make CMakeFiles/kvcore.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=4,5,6,7,8,9 "Built target kvcore"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=4,5,6,7,8,9,10 "Built target kvcore"
 .PHONY : CMakeFiles/kvcore.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/kvcore.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 6
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 7
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/kvcore.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 0
 .PHONY : CMakeFiles/kvcore.dir/rule
@@ -117,7 +117,7 @@ CMakeFiles/kvcore.dir/clean:
 CMakeFiles/myrpc_core.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_core.dir/build.make CMakeFiles/myrpc_core.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=12,13,14,15,16,17,18,19,20 "Built target myrpc_core"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=13,14,15,16,17,18,19,20,21 "Built target myrpc_core"
 .PHONY : CMakeFiles/myrpc_core.dir/all
 
 # Build rule for subdir invocation for target.
@@ -143,7 +143,7 @@ CMakeFiles/myrpc_core.dir/clean:
 CMakeFiles/myrpc_provider.dir/all: CMakeFiles/myrpc_core.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_provider.dir/build.make CMakeFiles/myrpc_provider.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/myrpc_provider.dir/build.make CMakeFiles/myrpc_provider.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=21,22 "Built target myrpc_provider"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=22,23 "Built target myrpc_provider"
 .PHONY : CMakeFiles/myrpc_provider.dir/all
 
 # Build rule for subdir invocation for target.
@@ -171,12 +171,12 @@ CMakeFiles/kvserver.dir/all: CMakeFiles/kvcore.dir/all
 CMakeFiles/kvserver.dir/all: CMakeFiles/myrpc_core.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvserver.dir/build.make CMakeFiles/kvserver.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvserver.dir/build.make CMakeFiles/kvserver.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=10,11 "Built target kvserver"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=11,12 "Built target kvserver"
 .PHONY : CMakeFiles/kvserver.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/kvserver.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 20
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/kvserver.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 0
 .PHONY : CMakeFiles/kvserver.dir/rule
@@ -203,7 +203,7 @@ CMakeFiles/kvclient.dir/all: CMakeFiles/myrpc_core.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/kvclient.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 17
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/kvclient.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 0
 .PHONY : CMakeFiles/kvclient.dir/rule
@@ -250,12 +250,12 @@ CMakeFiles/clean_kv_logs.dir/clean:
 CMakeFiles/run_kvclient_default.dir/all: CMakeFiles/kvclient.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_kvclient_default.dir/build.make CMakeFiles/run_kvclient_default.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_kvclient_default.dir/build.make CMakeFiles/run_kvclient_default.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=23 "Built target run_kvclient_default"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=24 "Built target run_kvclient_default"
 .PHONY : CMakeFiles/run_kvclient_default.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/run_kvclient_default.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/run_kvclient_default.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles 0
 .PHONY : CMakeFiles/run_kvclient_default.dir/rule

@@ -3,6 +3,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o.d"
   "CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.o"
   "CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.o.d"
+  "CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o"
+  "CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o.d"
   "CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o"
   "CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o.d"
   "CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o"

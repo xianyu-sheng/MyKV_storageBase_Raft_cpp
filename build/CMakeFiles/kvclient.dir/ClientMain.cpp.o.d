@@ -338,7 +338,12 @@ CMakeFiles/kvclient.dir/ClientMain.cpp.o: \
  /usr/include/google/protobuf/stubs/stl_util.h \
  /usr/include/google/protobuf/message.h \
  /usr/include/google/protobuf/extension_set.h /usr/include/c++/11/cassert \
+ /usr/include/google/protobuf/map_entry.h \
+ /usr/include/google/protobuf/reflection_ops.h \
+ /usr/include/google/protobuf/map_field_inl.h \
+ /usr/include/google/protobuf/map_field.h \
  /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Clerk/../Proto/raftRpcProtoc/raftRPC.pb.h \
+ /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Clerk/../Proto/raftKVRpcProtoc/KvServerRPC.pb.h \
  /usr/include/c++/11/thread /usr/include/c++/11/bits/std_thread.h \
  /usr/include/c++/11/bits/this_thread_sleep.h /usr/include/glog/logging.h \
  /usr/include/c++/11/sstream /usr/include/c++/11/bits/sstream.tcc \

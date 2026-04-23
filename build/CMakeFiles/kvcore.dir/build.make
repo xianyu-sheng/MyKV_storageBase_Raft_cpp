@@ -97,10 +97,24 @@ CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/KvServer.cpp -o CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.s
 
+CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o: CMakeFiles/kvcore.dir/flags.make
+CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/RecallEngine.cpp
+CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o: CMakeFiles/kvcore.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o -MF CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o.d -o CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o -c /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/RecallEngine.cpp
+
+CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/RecallEngine.cpp > CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.i
+
+CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/KvServer/RecallEngine.cpp -o CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.s
+
 CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o: CMakeFiles/kvcore.dir/flags.make
 CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o: /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Clerk/clerk.cpp
 CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o: CMakeFiles/kvcore.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o -MF CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o.d -o CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o -c /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Clerk/clerk.cpp
 
 CMakeFiles/kvcore.dir/Clerk/clerk.cpp.i: cmake_force
@@ -114,7 +128,7 @@ CMakeFiles/kvcore.dir/Clerk/clerk.cpp.s: cmake_force
 CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o: CMakeFiles/kvcore.dir/flags.make
 CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o: /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftRpcProtoc/raftRPC.pb.cc
 CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o: CMakeFiles/kvcore.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o -MF CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o.d -o CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o -c /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftRpcProtoc/raftRPC.pb.cc
 
 CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.i: cmake_force
@@ -128,7 +142,7 @@ CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.s: cmake_force
 CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o: CMakeFiles/kvcore.dir/flags.make
 CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o: /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc
 CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o: CMakeFiles/kvcore.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o -MF CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o.d -o CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o -c /home/xianyu-sheng/MyKV_storageBase_Raft_cpp/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc
 
 CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.i: cmake_force
@@ -143,6 +157,7 @@ CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.s: cmake_force
 kvcore_OBJECTS = \
 "CMakeFiles/kvcore.dir/Raft/Raft.cpp.o" \
 "CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.o" \
+"CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o" \
 "CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o" \
 "CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o" \
 "CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o"
@@ -152,12 +167,13 @@ kvcore_EXTERNAL_OBJECTS =
 
 libkvcore.a: CMakeFiles/kvcore.dir/Raft/Raft.cpp.o
 libkvcore.a: CMakeFiles/kvcore.dir/KvServer/KvServer.cpp.o
+libkvcore.a: CMakeFiles/kvcore.dir/KvServer/RecallEngine.cpp.o
 libkvcore.a: CMakeFiles/kvcore.dir/Clerk/clerk.cpp.o
 libkvcore.a: CMakeFiles/kvcore.dir/Proto/raftRpcProtoc/raftRPC.pb.cc.o
 libkvcore.a: CMakeFiles/kvcore.dir/Proto/raftKVRpcProtoc/KvServerRPC.pb.cc.o
 libkvcore.a: CMakeFiles/kvcore.dir/build.make
 libkvcore.a: CMakeFiles/kvcore.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX static library libkvcore.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/xianyu-sheng/MyKV_storageBase_Raft_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX static library libkvcore.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/kvcore.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/kvcore.dir/link.txt --verbose=$(VERBOSE)
 

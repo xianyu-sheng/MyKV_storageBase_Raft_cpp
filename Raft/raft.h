@@ -588,6 +588,8 @@ private:
         int GetCommitIndex();
         // 获取当前 Leader 信息
         void GetLeaderInfo(int* leaderId, std::string* leaderIp, int* leaderPort);
+        // 等待日志重放完成（用于 HNSW 索引初始化）
+        bool WaitApplyDone(int timeoutMs);
         // ReadIndex RPC 处理函数
         void ReadIndex(::google::protobuf::RpcController* controller,
                        const raftRpcProtoc::ReadIndexRequest* request,
